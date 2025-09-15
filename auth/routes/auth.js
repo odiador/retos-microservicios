@@ -3,6 +3,7 @@ import { z } from 'zod'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import query from '../db.js'
+import events from '../events/publisher.js'
 import { parseTokenExpToSeconds } from '../utils/token.js'
 import crypto from 'crypto'
 import { baseUserSchema, userSchema, errorResponse, validationErrorResponse, successResponse } from '../schemas.js'
@@ -12,6 +13,23 @@ const TOKEN_EXP = process.env.TOKEN_EXP || '1h'
 const SCHEMA = process.env.DB_SCHEMA || 'auth'
 
 const auth = new OpenAPIHono()
+
+// Helper para obtener IP de forma segura en distintos entornos
+function getRequestIp(c) {
+  try {
+    // Hono exposes headers via c.req.header or c.req.headers.get depending on context
+    const xfwd = (typeof c.req.header === 'function' && c.req.header('x-forwarded-for')) ||
+                 (c.req.headers && typeof c.req.headers.get === 'function' && c.req.headers.get('x-forwarded-for')) ||
+                 null
+    if (xfwd) return xfwd.split(',')[0].trim()
+    // fallback to socket remote address if available
+    const remote = c.req.socket && c.req.socket.remoteAddress
+    if (remote) return remote
+  } catch (e) {
+    // ignore and return null
+  }
+  return null
+}
 
 /* =====================
   Registrar un nuevo usuario
@@ -99,6 +117,17 @@ auth.openapi(createRoute({
       { expiresIn: TOKEN_EXP }
     )
     const expiresIn = parseTokenExpToSeconds(TOKEN_EXP)
+
+    // Publicar evento user.created
+    try {
+      await events.publish('user.created', {
+        type: 'user.created',
+        data: { id: user.id, username: user.username, email: user.email, role: user.role },
+        meta: { ip: getRequestIp(c), timestamp: new Date().toISOString() }
+      })
+    } catch (err) {
+      console.error('Error publicando evento user.created', err && err.message ? err.message : err)
+    }
 
     return c.json({
       message: 'Usuario registrado exitosamente',
@@ -217,6 +246,17 @@ auth.openapi(createRoute({
       user
     }, 200)
 
+    // Publicar evento user.login
+    try {
+      await events.publish('user.login', {
+        type: 'user.login',
+        data: { id: row.id, username: row.username, email: row.email, role: row.role },
+        meta: { ip: getRequestIp(c), timestamp: new Date().toISOString() }
+      })
+    } catch (err) {
+      console.error('Error publicando evento user.login', err && err.message ? err.message : err)
+    }
+
   } catch (error) {
     console.error('Error al crear sesión:', error)
     return c.json({ error: 'Error interno del servidor' }, 500)
@@ -279,6 +319,17 @@ auth.openapi(createRoute({
 
       // Aquí normalmente iría un servicio de envío de correo
       console.log(`[auth] Token de reseteo para ${email}: ${token}`)
+
+      // Publicar evento password.reset.requested
+      try {
+        await events.publish('password.reset.requested', {
+          type: 'password.reset.requested',
+          data: { userId, email, token },
+          meta: { ip: getRequestIp(c), timestamp: new Date().toISOString() }
+        })
+      } catch (err) {
+        console.error('Error publicando evento password.reset.requested', err && err.message ? err.message : err)
+      }
     }
 
     // Seguridad: nunca revelar si el email existe o no

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import db from '../db.js'
 import bcrypt from 'bcryptjs'
 import authMw from '../auth-mw.js'
+import events from '../events/publisher.js'
 import { userSchema, errorResponse, validationErrorResponse, successResponse, paginationQuery, paginationResponse, usernameParam } from '../schemas.js'
 
 const SCHEMA = process.env.DB_SCHEMA || 'auth'
@@ -120,6 +121,17 @@ users.openapi(createRoute({
   params.push(targetUserId)
   const sql = `UPDATE ${SCHEMA}.users SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING id, username, email, first_name AS "firstName", last_name AS "lastName", phone, role, status, created_at AS "createdAt", updated_at AS "updatedAt", last_login_at AS "lastLoginAt"`
   const updated = await db(sql, params)
+  // Publicar evento user.updated
+  try {
+    await events.publish('user.updated', {
+      type: 'user.updated',
+      data: { id: updated.rows[0].id, username: updated.rows[0].username, email: updated.rows[0].email },
+      meta: { actor: decoded.uid, timestamp: new Date().toISOString() }
+    })
+  } catch (err) {
+    console.error('Error publicando evento user.updated', err && err.message ? err.message : err)
+  }
+
   return c.json({ user: updated.rows[0] })
 })
 
@@ -190,6 +202,17 @@ users.openapi(createRoute({
 
   const newHash = await bcrypt.hash(newPassword, 10)
   await db(`UPDATE ${SCHEMA}.users SET password=$1, updated_at = NOW() WHERE id=$2`, [newHash, targetUserId])
+  // Publicar evento password.changed
+  try {
+    await events.publish('password.changed', {
+      type: 'password.changed',
+      data: { id: targetUserId, username },
+      meta: { actor: decoded.uid, timestamp: new Date().toISOString() }
+    })
+  } catch (err) {
+    console.error('Error publicando evento password.changed', err && err.message ? err.message : err)
+  }
+
   return c.json({ message: 'Contraseña cambiada exitosamente' })
 })
 
@@ -356,6 +379,17 @@ users.openapi(createRoute({
 
     if (result.rows.length === 0) {
       return c.json({ error: 'Usuario no encontrado' }, 404)
+    }
+
+    // Publicar evento user.deleted
+    try {
+      await events.publish('user.deleted', {
+        type: 'user.deleted',
+        data: { id: targetUserId, username },
+        meta: { actor: decoded.uid, timestamp: new Date().toISOString() }
+      })
+    } catch (err) {
+      console.error('Error publicando evento user.deleted', err && err.message ? err.message : err)
     }
 
     return c.json({ message: 'Cuenta eliminada exitosamente' }, 200)
