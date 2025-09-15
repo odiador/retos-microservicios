@@ -4,12 +4,15 @@ from twilio.rest import Client
 from twilio.base.exceptions import TwilioException
 import logging
 import re
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+load_dotenv()
 
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
