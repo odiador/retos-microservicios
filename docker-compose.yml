@@ -36,6 +36,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     restart: unless-stopped
 
   notifications:
@@ -47,6 +49,17 @@ services:
       - TWILIO_ACCOUNT_SID=${twilio_account_sid}
       - TWILIO_AUTH_TOKEN=${twilio_auth_token}
       - TWILIO_PHONE_NUMBER=${twilio_phone_number}
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: retos-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${rabbitmq_user:-guest}
+      - RABBITMQ_DEFAULT_PASS=${rabbitmq_pass:-guest}
     restart: unless-stopped
 
 volumes:
