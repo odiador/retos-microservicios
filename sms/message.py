@@ -5,19 +5,21 @@ from twilio.base.exceptions import TwilioException
 import logging
 import re
 from dotenv import load_dotenv
+import sys
 
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Load environment variables from .env file only if --use-env flag is provided
+if len(sys.argv) > 1 and sys.argv[1] == '--use-env':
+    load_dotenv()
 
-load_dotenv()
-
-TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
-TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
-TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
-PORT = int(os.getenv('PORT', 3000))
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+PORT = int(os.environ.get('PORT', 3000))
 
 
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
