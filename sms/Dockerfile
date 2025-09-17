@@ -6,5 +6,5 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE 3000
-CMD ["gunicorn", "--bind", "0.0.0.0:3000", "message:app"]
+EXPOSE 6379
+CMD ["gunicorn", "--bind", "0.0.0.0:6379", "message:app"]

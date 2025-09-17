@@ -3,5 +3,5 @@ WORKDIR /usr/src/app
 COPY package.json .
 RUN npm install --production
 COPY . .
-EXPOSE 90
+EXPOSE 3500
 CMD ["node", "index.js"]

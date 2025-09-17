@@ -3,17 +3,19 @@ services:
   db:
     image: postgres:16-alpine
     container_name: retos-postgres
+    env_file:
+      - ./.env
     environment:
-      - POSTGRES_DB=${database}
-      - POSTGRES_USER=${username}
-      - POSTGRES_PASSWORD=${password}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
     ports:
       - "5432:5432"
     volumes:
       - dbdata:/var/lib/postgresql/data
       - ./db:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${username} -d ${database}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,17 +24,9 @@ services:
   auth:
     build: ./auth
     ports:
-      - "90:90"
-    environment:
-      - PORT=90
-      - JWT_SECRET=${jwt_secret}
-      - TOKEN_EXP=${token_exp}
-      - DB_HOST=db
-      - DB_PORT=${port}
-      - DB_NAME=${database}
-      - DB_USER=${username}
-      - DB_PASS=${password}
-      - DB_SCHEMA=${schema}
+      - "3500:3500"
+    env_file:
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -43,12 +37,9 @@ services:
   notifications:
     build: ./sms
     ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-      - TWILIO_ACCOUNT_SID=${twilio_account_sid}
-      - TWILIO_AUTH_TOKEN=${twilio_auth_token}
-      - TWILIO_PHONE_NUMBER=${twilio_phone_number}
+      - "6379:6379"
+    env_file:
+      - ./.env
     restart: unless-stopped
 
   rabbitmq:
@@ -58,8 +49,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=${rabbitmq_user:-guest}
-      - RABBITMQ_DEFAULT_PASS=${rabbitmq_pass:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest}
     restart: unless-stopped
 
 volumes:

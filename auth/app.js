@@ -9,7 +9,7 @@ export const app = new OpenAPIHono({
     description: 'Reto numero 2 de microservicios',
   },
   servers: [
-    { url: 'http://localhost:90', description: 'Local' },
+    { url: 'http://localhost:3500', description: 'Local' },
   ],
   tags: [
     { name: 'Health', description: 'Health check endpoints' },

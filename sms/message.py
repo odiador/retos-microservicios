@@ -19,7 +19,7 @@ if len(sys.argv) > 1 and sys.argv[1] == '--use-env':
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
-PORT = int(os.environ.get('PORT', 3000))
+PORT = int(os.environ.get('MESSAGING_PORT', 6379))
 
 
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
