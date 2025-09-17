@@ -19,8 +19,8 @@ function getRequestIp(c) {
   try {
     // Hono exposes headers via c.req.header or c.req.headers.get depending on context
     const xfwd = (typeof c.req.header === 'function' && c.req.header('x-forwarded-for')) ||
-                 (c.req.headers && typeof c.req.headers.get === 'function' && c.req.headers.get('x-forwarded-for')) ||
-                 null
+      (c.req.headers && typeof c.req.headers.get === 'function' && c.req.headers.get('x-forwarded-for')) ||
+      null
     if (xfwd) return xfwd.split(',')[0].trim()
     // fallback to socket remote address if available
     const remote = c.req.socket && c.req.socket.remoteAddress
@@ -238,13 +238,7 @@ auth.openapi(createRoute({
     )
     const expiresIn = parseTokenExpToSeconds(TOKEN_EXP)
 
-    return c.json({
-      message: 'Sesión creada exitosamente',
-      access_token: token,
-      token_type: 'Bearer',
-      expires_in: expiresIn,
-      user
-    }, 200)
+
 
     // Publicar evento user.login
     try {
@@ -256,6 +250,14 @@ auth.openapi(createRoute({
     } catch (err) {
       console.error('Error publicando evento user.login', err && err.message ? err.message : err)
     }
+
+    return c.json({
+      message: 'Sesión creada exitosamente',
+      access_token: token,
+      token_type: 'Bearer',
+      expires_in: expiresIn,
+      user
+    }, 200)
 
   } catch (error) {
     console.error('Error al crear sesión:', error)
@@ -271,7 +273,7 @@ auth.openapi(createRoute({
 const forgotBody = z.object({
   email: z.string().email('Formato de email inválido').describe('Correo electrónico donde enviar el código'),
 })
-const forgotResp = z.object({ 
+const forgotResp = z.object({
   message: z.string().describe('Mensaje de confirmación del envío del código')
 })
 
@@ -314,7 +316,7 @@ auth.openapi(createRoute({
          VALUES (uuid_generate_v4(), $1, $2, NOW() + interval '1 hour')`,
         [userId, token]
 
-        
+
       )
 
       // Aquí normalmente iría un servicio de envío de correo
