@@ -1,20 +1,16 @@
 # Multi-stage build para Java/Spring Boot
-FROM gradle:8.4-jdk17 AS build
+FROM gradle:8.4-jdk21 AS build
 
 WORKDIR /app
 
-# Copiar archivos de configuración de Gradle
-COPY build.gradle.kts settings.gradle.kts gradle.properties ./
-COPY gradle ./gradle
-
-# Copiar código fuente
-COPY src ./src
+# Copiar todo el proyecto (incluyendo subproyectos)
+COPY . .
 
 # Construir la aplicación
 RUN gradle build --no-daemon
 
 # Stage de runtime
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
@@ -22,8 +18,8 @@ WORKDIR /app
 RUN addgroup -g 1001 -S orchestrator && \
     adduser -u 1001 -S orchestrator -G orchestrator
 
-# Copiar el JAR construido
-COPY --from=build /app/build/libs/*.jar app.jar
+# Copiar el JAR construido desde el subproyecto app
+COPY --from=build /app/app/build/libs/*.jar app.jar
 
 # Cambiar propietario
 RUN chown orchestrator:orchestrator app.jar

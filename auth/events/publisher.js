@@ -19,7 +19,7 @@ async function connect() {
   }
 }
 
-export async function publish(routingKey, payload = {}) {
+async function publish(routingKey, payload = {}) {
   try {
     const ch = await connect();
     const buf = Buffer.from(JSON.stringify(payload));
@@ -31,3 +31,5 @@ export async function publish(routingKey, payload = {}) {
     return false;
   }
 }
+
+export default { publish };
