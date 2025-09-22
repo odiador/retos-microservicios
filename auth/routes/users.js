@@ -136,10 +136,10 @@ users.openapi(createRoute({
 })
 
 /* =====================
-   PUT /accounts/{username}/password - Cambiar contraseña de usuario
+   PUT /accounts/{username} - Cambiar contraseña
 ===================== */
-const changePassBody = z.object({
-  currentPassword: z.string().min(1, 'La contraseña actual es obligatoria').describe('Contraseña actual del usuario'),
+const changePasswordBody = z.object({
+  oldPassword: z.string().min(1, 'La contraseña actual es obligatoria').describe('Contraseña actual del usuario'),
   newPassword: z.string().min(8, 'La nueva contraseña debe tener al menos 8 caracteres').max(100, 'La nueva contraseña no puede tener más de 100 caracteres').describe('Nueva contraseña segura'),
 })
 
@@ -157,22 +157,22 @@ users.openapi(createRoute({
         .regex(/^[a-zA-Z0-9_]+$/, 'El nombre de usuario solo puede contener letras, números y guiones bajos')
         .describe('Nombre de usuario cuya contraseña se va a cambiar')
     }),
-    body: { content: { 'application/json': { schema: changePassBody } } }
+    body: { content: { 'application/json': { schema: changePasswordBody } } }
   },
   responses: {
-    200: { description: 'Contraseña cambiada exitosamente', content: { 'application/json': { schema: z.object({ message: z.string().describe('Mensaje de confirmación del cambio de contraseña') }) } } },
-    400: { description: 'Validación fallida - Verifique la contraseña actual y la nueva', content: { 'application/json': { schema: validationErrorResponse } } },
+    200: { description: 'Contraseña cambiada exitosamente', content: { 'application/json': { schema: z.object({ message: z.string().describe('Mensaje de confirmación') }).describe('Respuesta de confirmación del cambio de contraseña') } } },
+    400: { description: 'Datos inválidos - Verifique las contraseñas', content: { 'application/json': { schema: validationErrorResponse } } },
     401: { description: 'No autenticado - Token de acceso requerido', content: { 'application/json': { schema: errorResponse } } },
     403: { description: 'No autorizado para cambiar esta contraseña', content: { 'application/json': { schema: errorResponse } } },
-    404: { description: 'Usuario no encontrado', content: { 'application/json': { schema: errorResponse } } }
+    404: { description: 'Usuario no encontrado', content: { 'application/json': { schema: errorResponse } } },
+    500: { description: 'Error interno del servidor', content: { 'application/json': { schema: errorResponse } } }
   },
 }), async (c) => {
   const decoded = c.get('user')
   if (!decoded || !decoded.uid) return c.json({ error: 'No autenticado' }, 401)
   
   const { username } = c.req.valid('param')
-  const { currentPassword, newPassword } = c.req.valid('json')
-  if (newPassword.length < 8) return c.json({ error: 'Contraseña demasiado corta' }, 400)
+  const { oldPassword, newPassword } = c.req.valid('json')
 
   // Verificar permisos: el usuario puede cambiar su propia contraseña o un admin puede cambiar cualquier contraseña
   if (decoded.sub !== username) {
@@ -186,34 +186,36 @@ users.openapi(createRoute({
     }
   }
 
-  // Buscar el usuario cuya contraseña se va a cambiar
-  const userResult = await db(`SELECT id FROM ${SCHEMA}.users WHERE username=$1 LIMIT 1`, [username])
-  if (userResult.rows.length === 0) {
-    return c.json({ error: 'Usuario no encontrado' }, 404)
-  }
-  const targetUserId = userResult.rows[0].id
+  // Obtener información completa del usuario
+  const userResult = await db(`SELECT id, password, email, phone FROM ${SCHEMA}.users WHERE username=$1 LIMIT 1`, [username])
+  if (userResult.rows.length === 0) return c.json({ error: 'Usuario no encontrado' }, 404)
 
-  // Si no es admin, verificar la contraseña actual
-  if (decoded.sub === username) {
-    const result = await db(`SELECT password FROM ${SCHEMA}.users WHERE id=$1 LIMIT 1`, [decoded.uid])
-    const match = await bcrypt.compare(currentPassword, result.rows[0].password)
-    if (!match) return c.json({ error: 'Contraseña actual incorrecta' }, 401)
+  const { id: userId, password: currentHash, email, phone } = userResult.rows[0]
+
+  // Verificar la contraseña actual
+  const match = await bcrypt.compare(oldPassword, currentHash)
+  if (!match) {
+    return c.json({ error: 'Contraseña actual incorrecta' }, 400)
   }
 
+  // Hashear la nueva contraseña
   const newHash = await bcrypt.hash(newPassword, 10)
-  await db(`UPDATE ${SCHEMA}.users SET password=$1, updated_at = NOW() WHERE id=$2`, [newHash, targetUserId])
-  // Publicar evento password.changed
+
+  // Actualizar la contraseña en la BD
+  await db(`UPDATE ${SCHEMA}.users SET password=$1, updated_at=NOW() WHERE username=$2`, [newHash, username])
+
+  // Publicar evento password.updated con información completa
   try {
-    await events.publish('password.changed', {
-      type: 'password.changed',
-      data: { id: targetUserId, username },
+    await events.publish('password.updated', {
+      type: 'password.updated',
+      data: { userId, username, email, phone },
       meta: { actor: decoded.uid, timestamp: new Date().toISOString() }
     })
   } catch (err) {
-    console.error('Error publicando evento password.changed', err && err.message ? err.message : err)
+    console.error('Error publicando evento password.updated', err && err.message ? err.message : err)
   }
 
-  return c.json({ message: 'Contraseña cambiada exitosamente' })
+  return c.json({ message: 'Contraseña cambiada exitosamente' }, 200)
 })
 
 /* =====================

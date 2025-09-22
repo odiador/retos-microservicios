@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: notification-orchestrator
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: admin
+    password: securepass
+    virtual-host: /
+    
+server:
+  port: 8080
+
+orchestrator:
+  exchange: auth.events
+  queues:
+    input: orchestrator.queue
+  routing-keys:
+    user: "user.*"
+    password: "password.*"
+    send-email: "send.email"
+    send-sms: "send.sms"
+
+logging:
+  level:
+    com.microservicios.orchestrator: INFO
+    org.springframework.amqp: WARN
+    root: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

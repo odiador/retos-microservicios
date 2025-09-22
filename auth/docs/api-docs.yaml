@@ -58,8 +58,6 @@ components:
           type: string
         lastName:
           type: string
-        phone:
-          type: string
       required:
         - username
         - email
@@ -67,13 +65,13 @@ components:
     LoginRequest:
       type: object
       properties:
-        username:
+        identifier:
           type: string
         password:
           type: string
           minLength: 1
       required:
-        - username
+        - identifier
         - password
     ValidationError:
       type: object

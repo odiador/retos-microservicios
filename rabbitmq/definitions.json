@@ -1,0 +1,95 @@
+{
+  "users": [
+    {
+      "name": "admin",
+      "password": "securepass",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user": "admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "auth.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true
+    }
+  ],
+  "queues": [
+    {
+      "name": "orchestrator.queue",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "messaging.email.queue",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "messaging.sms.queue",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "auth.audit.queue",
+      "vhost": "/",
+      "durable": true
+    }
+  ],
+  "bindings": [
+    {
+      "source": "auth.events",
+      "vhost": "/",
+      "destination": "orchestrator.queue",
+      "destination_type": "queue",
+      "routing_key": "user.*"
+    },
+    {
+      "source": "auth.events",
+      "vhost": "/",
+      "destination": "orchestrator.queue",
+      "destination_type": "queue",
+      "routing_key": "password.*"
+    },
+    {
+      "source": "auth.events",
+      "vhost": "/",
+      "destination": "messaging.email.queue",
+      "destination_type": "queue",
+      "routing_key": "send.email"
+    },
+    {
+      "source": "auth.events",
+      "vhost": "/",
+      "destination": "messaging.sms.queue",
+      "destination_type": "queue",
+      "routing_key": "send.sms"
+    },
+    {
+      "source": "auth.events",
+      "vhost": "/",
+      "destination": "auth.audit.queue",
+      "destination_type": "queue",
+      "routing_key": "user.*"
+    },
+    {
+      "source": "auth.events",
+      "vhost": "/",
+      "destination": "auth.audit.queue",
+      "destination_type": "queue",
+      "routing_key": "password.*"
+    }
+  ]
+}

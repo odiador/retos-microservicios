@@ -1,0 +1,95 @@
+{
+  "users": [
+    {
+      "name": "${RABBITMQ_USER}",
+      "password": "${RABBITMQ_PASSWORD}",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    { "name": "${RABBITMQ_VHOST}" }
+  ],
+  "permissions": [
+    {
+      "user": "${RABBITMQ_USER}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "${AUTH_EVENTS_EXCHANGE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "type": "topic",
+      "durable": true
+    }
+  ],
+  "queues": [
+    {
+      "name": "${ORCHESTRATOR_QUEUE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "durable": true
+    },
+    {
+      "name": "${MESSAGING_EMAIL_QUEUE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "durable": true
+    },
+    {
+      "name": "${MESSAGING_SMS_QUEUE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "durable": true
+    },
+    {
+      "name": "${AUTH_AUDIT_QUEUE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "durable": true
+    }
+  ],
+  "bindings": [
+    {
+      "source": "${AUTH_EVENTS_EXCHANGE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "destination": "${ORCHESTRATOR_QUEUE}",
+      "destination_type": "queue",
+      "routing_key": "${USER_ROUTING_KEY}"
+    },
+    {
+      "source": "${AUTH_EVENTS_EXCHANGE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "destination": "${ORCHESTRATOR_QUEUE}",
+      "destination_type": "queue",
+      "routing_key": "${PASSWORD_ROUTING_KEY}"
+    },
+    {
+      "source": "${AUTH_EVENTS_EXCHANGE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "destination": "${MESSAGING_EMAIL_QUEUE}",
+      "destination_type": "queue",
+      "routing_key": "${SEND_EMAIL_ROUTING_KEY}"
+    },
+    {
+      "source": "${AUTH_EVENTS_EXCHANGE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "destination": "${MESSAGING_SMS_QUEUE}",
+      "destination_type": "queue",
+      "routing_key": "${SEND_SMS_ROUTING_KEY}"
+    },
+    {
+      "source": "${AUTH_EVENTS_EXCHANGE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "destination": "${AUTH_AUDIT_QUEUE}",
+      "destination_type": "queue",
+      "routing_key": "${USER_ROUTING_KEY}"
+    },
+    {
+      "source": "${AUTH_EVENTS_EXCHANGE}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "destination": "${AUTH_AUDIT_QUEUE}",
+      "destination_type": "queue",
+      "routing_key": "${PASSWORD_ROUTING_KEY}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: notification-orchestrator
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASSWORD:securepass}
+    virtual-host: ${RABBITMQ_VHOST:/}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+orchestrator:
+  exchange: ${AUTH_EVENTS_EXCHANGE:auth.events}
+  queues:
+    input: ${ORCHESTRATOR_QUEUE:orchestrator.queue}
+  routing-keys:
+    user: ${USER_ROUTING_KEY:user.*}
+    password: ${PASSWORD_ROUTING_KEY:password.*}
+    send-email: ${SEND_EMAIL_ROUTING_KEY:send.email}
+    send-sms: ${SEND_SMS_ROUTING_KEY:send.sms}
+
+logging:
+  level:
+    com.microservicios.orchestrator: ${LOG_LEVEL_ORCHESTRATOR:INFO}
+    org.springframework.amqp: ${LOG_LEVEL_SPRING_AMQP:WARN}
+    root: ${LOG_LEVEL_ROOT:INFO}
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

@@ -6,5 +6,6 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
+RUN chmod +x start.sh
 EXPOSE 6379
-CMD ["gunicorn", "--bind", "0.0.0.0:6379", "message:app"]
+CMD ["./start.sh"]
