@@ -10,7 +10,7 @@ async function connect() {
   try {
     const conn = await amqplib.connect(RABBIT_URL);
     channel = await conn.createChannel();
-    await channel.assertExchange(EXCHANGE, 'topic', { durable: true });
+    await channel.assertExchange(EXCHANGE, 'topic', { durable: true, autoDelete: false });
     console.log('[events] Conectado a RabbitMQ');
     return channel;
   } catch (err) {

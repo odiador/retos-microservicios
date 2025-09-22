@@ -71,7 +71,9 @@ services:
     restart: unless-stopped
 
   rabbitmq:
-    build: ./rabbitmq
+    build:
+      context: .
+      dockerfile: rabbitmq/Dockerfile
     container_name: retos-rabbitmq
     ports:
       - "5672:5672"

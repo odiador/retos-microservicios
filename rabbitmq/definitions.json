@@ -23,7 +23,8 @@
       "name": "auth.events",
       "vhost": "/",
       "type": "topic",
-      "durable": true
+      "durable": true,
+      "auto_delete": false
     }
   ],
   "queues": [

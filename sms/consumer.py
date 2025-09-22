@@ -91,7 +91,7 @@ def start_consumer():
         channel = connection.channel()
         
         # Declarar exchange y queue
-        channel.exchange_declare(exchange=EXCHANGE, exchange_type='topic', durable=True)
+        channel.exchange_declare(exchange=EXCHANGE, exchange_type='topic', durable=True, auto_delete=False)
         channel.queue_declare(queue=QUEUE, durable=True)
         channel.queue_bind(exchange=EXCHANGE, queue=QUEUE, routing_key=ROUTING_KEY)
         

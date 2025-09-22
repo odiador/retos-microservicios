@@ -23,7 +23,8 @@
       "name": "${AUTH_EVENTS_EXCHANGE}",
       "vhost": "${RABBITMQ_VHOST}",
       "type": "topic",
-      "durable": true
+      "durable": true,
+      "auto_delete": false
     }
   ],
   "queues": [
