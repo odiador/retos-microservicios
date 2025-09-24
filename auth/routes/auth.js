@@ -123,7 +123,13 @@ auth.openapi(createRoute({
     try {
       await events.publish('user.created', {
         type: 'user.created',
-        data: { id: user.id, username: user.username, email: user.email, role: user.role },
+        data: { 
+          id: user.id, 
+          username: user.username, 
+          email: user.email, 
+          phone: user.phone,
+          role: user.role 
+        },
         meta: { ip: getRequestIp(c), timestamp: new Date().toISOString() }
       })
     } catch (err) {

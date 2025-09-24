@@ -41,8 +41,9 @@ public class NotificationOrchestratorService {
         String userId = event.getUserId();
         String username = event.getUsername();
         String email = event.getEmail();
+        String phone = event.getPhone();
         
-        logger.info("Usuario registrado: {} ({})", username, email);
+        logger.info("Usuario registrado: {} ({}) - Phone: {}", username, email, phone);
         
         // Enviar email de confirmación de cuenta
         Map<String, Object> emailData = new HashMap<>();
@@ -53,6 +54,18 @@ public class NotificationOrchestratorService {
                 "account.confirmation", email, "welcome", emailData);
         
         publishNotification(sendEmailRoutingKey, emailNotification);
+        
+        // Enviar SMS de bienvenida (solo si el usuario tiene teléfono)
+        if (phone != null && !phone.trim().isEmpty()) {
+            String welcomeSmsMessage = String.format("¡Bienvenido %s! Tu cuenta ha sido creada exitosamente. ¡Gracias por registrarte!", username);
+            
+            NotificationRequest smsNotification = NotificationRequest.smsNotification(
+                    "account.created", phone, welcomeSmsMessage);
+            
+            publishNotification(sendSmsRoutingKey, smsNotification);
+        } else {
+            logger.warn("Usuario {} no tiene teléfono configurado para SMS de bienvenida", username);
+        }
     }
     
     /**
