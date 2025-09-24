@@ -41,6 +41,7 @@ const registerBody = z.object({
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(100, 'La contraseña no puede tener más de 100 caracteres').describe('Contraseña segura (mínimo 8 caracteres)'),
   firstName: z.string().min(1, 'El nombre es obligatorio').max(50, 'El nombre no puede tener más de 50 caracteres').describe('Nombre del usuario'),
   lastName: z.string().min(1, 'El apellido es obligatorio').max(50, 'El apellido no puede tener más de 50 caracteres').describe('Apellido del usuario'),
+  phone: z.string().min(7, 'El número de teléfono debe tener al menos 7 dígitos').max(20, 'El número de teléfono no puede tener más de 20 caracteres').regex(/^[+]?[0-9\s\-()]+$/, 'El número de teléfono solo puede contener números, espacios, guiones, paréntesis y el símbolo +').describe('Número de teléfono del usuario'),
 })
 
 const registerResp = z.object({
@@ -71,11 +72,11 @@ auth.openapi(createRoute({
   },
 }), async (c) => {
   try {
-    const { username, email, password, firstName, lastName } = c.req.valid('json')
+    const { username, email, password, firstName, lastName, phone } = c.req.valid('json')
 
     // Validación rápida antes de ir a BD
-    if (!username || !email || !password) {
-      return c.json({ error: 'Faltan campos obligatorios (username, email o password)' }, 400)
+    if (!username || !email || !password || !phone) {
+      return c.json({ error: 'Faltan campos obligatorios (username, email, password o phone)' }, 400)
     }
 
     // Verificar si ya existe el usuario
@@ -90,10 +91,10 @@ auth.openapi(createRoute({
     const passwordHash = await bcrypt.hash(password, 10)
 
     const insert = await query(
-      `INSERT INTO ${SCHEMA}.users (username,email,password,first_name,last_name)
-       VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO ${SCHEMA}.users (username,email,password,first_name,last_name,phone)
+       VALUES ($1,$2,$3,$4,$5,$6)
        RETURNING id,username,email,first_name,last_name,phone,role,status,created_at,updated_at,last_login_at`,
-      [username, email, passwordHash, firstName, lastName]
+      [username, email, passwordHash, firstName, lastName, phone]
     )
 
     const row = insert.rows[0]

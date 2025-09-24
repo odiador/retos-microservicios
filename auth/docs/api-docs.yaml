@@ -58,10 +58,19 @@ components:
           type: string
         lastName:
           type: string
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 20
+          pattern: ^[+]?[0-9\s\-()]+$
+          description: Número de teléfono del usuario
       required:
         - username
         - email
         - password
+        - firstName
+        - lastName
+        - phone
     LoginRequest:
       type: object
       properties:
@@ -149,12 +158,19 @@ paths:
                   minLength: 1
                   maxLength: 50
                   description: Apellido del usuario
+                phone:
+                  type: string
+                  minLength: 7
+                  maxLength: 20
+                  pattern: ^[+]?[0-9\s\-()]+$
+                  description: Número de teléfono del usuario
               required:
                 - username
                 - email
                 - password
                 - firstName
                 - lastName
+                - phone
       responses:
         '201':
           description: Usuario registrado exitosamente
