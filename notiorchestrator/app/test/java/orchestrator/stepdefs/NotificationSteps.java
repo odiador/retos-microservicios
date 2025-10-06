@@ -30,7 +30,7 @@ public class NotificationSteps {
                 .header("Content-Type", "application/json")
                 .body(requestBody)
                 .when()
-                .post("/events"); // <- endpoint que debes exponer en tu orquestador
+                .post("/events"); 
     }
 
     @Then("debo publicar una notificación de tipo {string} a {string}")
