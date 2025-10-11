@@ -2,14 +2,22 @@ package com.microservicios.orchestrator.model;
 
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class AuthEvent {
     private String type;
     private Map<String, Object> data;
     private Map<String, Object> meta;
 
-    public AuthEvent() {}
+    public AuthEvent() {
+        data = new java.util.HashMap<>();
+        meta = new java.util.HashMap<>();
+    }
 
-    public AuthEvent(String type, Map<String, Object> data, Map<String, Object> meta) {
+    @JsonCreator
+    public AuthEvent(@JsonProperty("type") String type, @JsonProperty("data") Map<String, Object> data,
+            @JsonProperty("meta") Map<String, Object> meta) {
         this.type = type;
         this.data = data;
         this.meta = meta;
