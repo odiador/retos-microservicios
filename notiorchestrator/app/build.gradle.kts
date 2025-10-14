@@ -1,6 +1,8 @@
 plugins {
     id("org.springframework.boot") version "3.3.4" // usa la última estable
     id("io.spring.dependency-management") version "1.1.6" // opcional si usas Boot 3.3+
+    id("org.sonarqube") version "5.1.0.4882" // Plugin de SonarQube
+    jacoco // Plugin de cobertura de código
     java
     application
 }
@@ -35,4 +37,39 @@ java {
 
 application {
     mainClass.set("com.microservicios.orchestrator.OrchestratorApplication")
+}
+
+// ============================================
+// CONFIGURACIÓN DE JACOCO (Cobertura de Código)
+// ============================================
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+}
+
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+// ============================================
+// CONFIGURACIÓN DE SONARQUBE
+// ============================================
+sonar {
+    properties {
+        property("sonar.projectKey", "orchestrator-service")
+        property("sonar.projectName", "Notification Orchestrator")
+        property("sonar.host.url", System.getenv("SONAR_HOST_URL") ?: "http://localhost:9000")
+        property("sonar.sources", "src/main/java")
+        property("sonar.tests", "src/test/java")
+        property("sonar.java.binaries", "build/classes/java/main")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
+    }
 }

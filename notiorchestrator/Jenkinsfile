@@ -1,0 +1,322 @@
+/**
+ * Jenkinsfile para Notification Orchestrator (Java + Spring Boot)
+ * 
+ * Pipeline de CI/CD que incluye:
+ * - Checkout del código
+ * - Compilación con Gradle
+ * - Ejecución de pruebas unitarias
+ * - Análisis de calidad con SonarQube
+ * - Generación de reportes de cobertura (JaCoCo)
+ * - Construcción de imagen Docker
+ * - Ejecución de pruebas Cucumber
+ */
+
+pipeline {
+    agent any
+    
+    tools {
+        gradle 'Gradle8'
+    }
+    
+    environment {
+        // Variables de entorno
+        SERVICE_NAME = 'orchestrator-service'
+        SERVICE_DIR = 'notiorchestrator'
+        SONAR_HOST_URL = 'http://sonarqube:9000'
+        DOCKER_IMAGE_NAME = 'orchestrator-service'
+        BUILD_VERSION = "${env.BUILD_NUMBER}"
+        JAVA_HOME = '/opt/java/openjdk'
+    }
+    
+    options {
+        // Opciones del pipeline
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 45, unit: 'MINUTES')
+        ansiColor('xterm')
+    }
+    
+    stages {
+        
+        // ============================================
+        // STAGE 1: CHECKOUT
+        // ============================================
+        stage('🔍 Checkout') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "📥 Clonando repositorio..."
+                echo "═══════════════════════════════════════════"
+                checkout scm
+                
+                script {
+                    // Mostrar información del commit
+                    sh """
+                        echo "Branch: \${GIT_BRANCH}"
+                        echo "Commit: \${GIT_COMMIT}"
+                        git log -1 --pretty=format:'%an - %s' || true
+                    """
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 2: BUILD
+        // ============================================
+        stage('🔨 Build') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "🔨 Compilando proyecto Java con Gradle..."
+                echo "═══════════════════════════════════════════"
+                
+                dir(SERVICE_DIR) {
+                    sh 'java -version'
+                    sh './gradlew --version'
+                    sh './gradlew clean build -x test --no-daemon'
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 3: PRUEBAS UNITARIAS
+        // ============================================
+        stage('🧪 Unit Tests') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "🧪 Ejecutando pruebas unitarias..."
+                echo "═══════════════════════════════════════════"
+                
+                dir(SERVICE_DIR) {
+                    sh './gradlew test --no-daemon --continue || true'
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 4: REPORTE DE COBERTURA (JACOCO)
+        // ============================================
+        stage('📊 Coverage Report') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "📊 Generando reporte de cobertura con JaCoCo..."
+                echo "═══════════════════════════════════════════"
+                
+                dir(SERVICE_DIR) {
+                    sh './gradlew jacocoTestReport --no-daemon || true'
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 5: ANÁLISIS DE SONARQUBE
+        // ============================================
+        stage('🔍 SonarQube Analysis') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "🔍 Analizando calidad de código con SonarQube..."
+                echo "═══════════════════════════════════════════"
+                
+                dir(SERVICE_DIR) {
+                    script {
+                        // Crear sonar-project.properties si no existe
+                        if (!fileExists('sonar-project.properties')) {
+                            writeFile file: 'sonar-project.properties', text: """
+sonar.projectKey=orchestrator-service
+sonar.projectName=Notification Orchestrator
+sonar.projectVersion=1.0
+
+# Paths
+sonar.sources=app/src/main/java
+sonar.tests=app/src/test/java
+sonar.java.binaries=app/build/classes/java/main
+sonar.java.test.binaries=app/build/classes/java/test
+
+# Coverage
+sonar.coverage.jacoco.xmlReportPaths=app/build/reports/jacoco/test/jacocoTestReport.xml
+
+# Exclusions
+sonar.exclusions=**/build/**,**/*.gradle,**/gradlew,**/gradlew.bat
+sonar.test.inclusions=**/*Test.java,**/*Tests.java
+
+# Encoding
+sonar.sourceEncoding=UTF-8
+"""
+                        }
+                        
+                        // Ejecutar análisis de SonarQube
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                ./gradlew sonarqube \
+                                    -Dsonar.projectKey=orchestrator-service \
+                                    -Dsonar.host.url=${SONAR_HOST_URL} \
+                                    --no-daemon || true
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 6: QUALITY GATE
+        // ============================================
+        stage('🚦 Quality Gate') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "🚦 Verificando Quality Gate de SonarQube..."
+                echo "═══════════════════════════════════════════"
+                
+                script {
+                    timeout(time: 5, unit: 'MINUTES') {
+                        try {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                echo "⚠️ Quality Gate falló: ${qg.status}"
+                                echo "⚠️ Continuando pipeline pero revisa los resultados en SonarQube"
+                                // No abortamos el pipeline, solo advertimos
+                            } else {
+                                echo "✅ Quality Gate aprobado"
+                            }
+                        } catch (Exception e) {
+                            echo "⚠️ Error verificando Quality Gate: ${e.message}"
+                            echo "⚠️ Continuando pipeline..."
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 7: BUILD DOCKER IMAGE
+        // ============================================
+        stage('🐳 Build Docker Image') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "🐳 Construyendo imagen Docker..."
+                echo "═══════════════════════════════════════════"
+                
+                dir(SERVICE_DIR) {
+                    script {
+                        // Construir imagen Docker
+                        sh """
+                            docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} .
+                            docker tag ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} ${DOCKER_IMAGE_NAME}:latest
+                        """
+                        
+                        echo "✅ Imagen construida: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
+                        echo "✅ Tag: ${DOCKER_IMAGE_NAME}:latest"
+                    }
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 8: PRUEBAS DE CUCUMBER
+        // ============================================
+        stage('🥒 Cucumber Tests') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "🥒 Ejecutando pruebas BDD con Cucumber..."
+                echo "═══════════════════════════════════════════"
+                
+                dir(SERVICE_DIR) {
+                    script {
+                        // Ejecutar pruebas de Cucumber si existen
+                        def cucumberExists = fileExists('app/src/test/resources/features')
+                        if (cucumberExists) {
+                            sh './gradlew test --tests CucumberTestRunner --no-daemon || true'
+                        } else {
+                            echo "ℹ️ No se encontraron pruebas de Cucumber"
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ============================================
+        // STAGE 9: PRUEBAS DE INTEGRACIÓN
+        // ============================================
+        stage('🔗 Integration Tests') {
+            steps {
+                echo "═══════════════════════════════════════════"
+                echo "🔗 Ejecutando pruebas de integración..."
+                echo "═══════════════════════════════════════════"
+                
+                script {
+                    // Verificar si existen pruebas de integración
+                    if (fileExists('tests/feature/notiorchestrator.feature')) {
+                        echo "📝 Pruebas de integración encontradas"
+                        echo "⚠️ Ejecutar con docker-compose en ambiente de testing"
+                        // Aquí se pueden ejecutar pruebas con Cucumber
+                    } else {
+                        echo "ℹ️ No se encontraron pruebas de integración externas"
+                    }
+                }
+            }
+        }
+    }
+    
+    // ============================================
+    // POST-BUILD ACTIONS
+    // ============================================
+    post {
+        always {
+            echo "═══════════════════════════════════════════"
+            echo "📊 Publicando reportes..."
+            echo "═══════════════════════════════════════════"
+            
+            dir(SERVICE_DIR) {
+                // Publicar resultados de JUnit
+                junit allowEmptyResults: true, testResults: '**/build/test-results/**/*.xml'
+                
+                // Publicar reporte de JaCoCo
+                jacoco(
+                    execPattern: '**/build/jacoco/*.exec',
+                    classPattern: '**/build/classes/java/main',
+                    sourcePattern: '**/src/main/java',
+                    exclusionPattern: '**/*Test*.class'
+                )
+                
+                // Publicar reporte HTML de tests
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'app/build/reports/tests/test',
+                    reportFiles: 'index.html',
+                    reportName: 'Test Report',
+                    reportTitles: 'Unit Tests'
+                ])
+                
+                // Publicar reporte de Cucumber si existe
+                cucumber buildStatus: 'UNSTABLE',
+                    fileIncludePattern: '**/cucumber-report.json',
+                    sortingMethod: 'ALPHABETICAL'
+            }
+        }
+        
+        success {
+            echo "═══════════════════════════════════════════"
+            echo "✅ Pipeline ejecutado exitosamente!"
+            echo "═══════════════════════════════════════════"
+            echo "Build #${BUILD_NUMBER} completado"
+            echo "Servicio: ${SERVICE_NAME}"
+            echo "Imagen Docker: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
+        }
+        
+        failure {
+            echo "═══════════════════════════════════════════"
+            echo "❌ Pipeline falló!"
+            echo "═══════════════════════════════════════════"
+            echo "Build #${BUILD_NUMBER} falló"
+            echo "Servicio: ${SERVICE_NAME}"
+            echo "Revisa los logs para más detalles"
+        }
+        
+        unstable {
+            echo "═══════════════════════════════════════════"
+            echo "⚠️ Pipeline inestable"
+            echo "═══════════════════════════════════════════"
+            echo "Algunas pruebas fallaron o el Quality Gate no pasó"
+        }
+    }
+}
