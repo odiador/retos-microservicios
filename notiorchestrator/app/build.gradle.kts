@@ -25,6 +25,8 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.amqp:spring-rabbit-test")
+    // RestAssured JSON Schema validator for response schema assertions
+    testImplementation("io.rest-assured:json-schema-validator:5.3.0")
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

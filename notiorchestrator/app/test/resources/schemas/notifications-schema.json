@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["notifications"],
+  "properties": {
+    "notifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "to"],
+        "properties": {
+          "type": { "type": "string" },
+          "to": { "type": "string" },
+          "subject": { "type": ["string", "null"] },
+          "template": { "type": ["string", "null"] },
+          "data": { "type": ["object", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
