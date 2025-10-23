@@ -114,25 +114,7 @@ services:
       - "50000:50000"    # Jenkins Agent
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./jenkins/init.groovy.d:/var/jenkins_home/init.groovy.d:ro
-      - ./jenkins/jobs:/var/jenkins_home/jobs
-    environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false -Djenkins.security.ApiTokenProperty.showTokenToAdmins=true
-      - JENKINS_OPTS=--prefix=/jenkins
-      - JENKINS_ADMIN_ID=${JENKINS_ADMIN_ID:-admin}
-      - JENKINS_ADMIN_PASSWORD=${JENKINS_ADMIN_PASSWORD:-admin123}
-      - SONAR_HOST_URL=http://sonarqube:9000
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/jenkins/login || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
     restart: unless-stopped
-    depends_on:
-      sonarqube:
-        condition: service_healthy
 
   # ============================================
   # SONARQUBE - Análisis de Calidad de Código
