@@ -37,6 +37,10 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
+            environment {
+                SONAR_HOST_URL = "http://sonarqube:9000"
+                SONAR_AUTH_TOKEN = credentials('sonarqube-token')
+            }
             steps {
                 script {
                     def scannerHome = tool 'sonarqube'
