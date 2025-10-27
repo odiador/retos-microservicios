@@ -47,7 +47,8 @@ pipeline {
                 echo "🔍 Analizando calidad de código con SonarQube..."
                 echo "==========================================="
                 withSonarQubeEnv('sonarqube') {
-                    sh """
+                    dir('auth') {
+                        sh """
                         echo $SONAR_HOST_URL
 
                         ${SCANNER_HOME}/bin/sonar-scanner \
@@ -58,6 +59,7 @@ pipeline {
                         -Dsonar.host.url=$SONAR_HOST_URL \
                         -Dsonar.login=$SONAR_AUTH_TOKEN
                     """
+                    }
                 }
             }
         }
