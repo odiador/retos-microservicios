@@ -12,6 +12,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                checkout scm
                 git branch: 'automatizacion-04', url: 'https://github.com/odiador/retos-microservicios.git'
                 sh 'cd auth'
                 sh 'pwd'
