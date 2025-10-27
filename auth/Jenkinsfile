@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs "node-for-auth_microservice"
+        nodejs "nodeForAuth"
     }
 
     environment {
