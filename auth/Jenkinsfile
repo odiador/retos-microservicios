@@ -24,8 +24,9 @@ pipeline {
                 echo "==========================================="
                 sh 'node --version'
                 sh 'npm --version'
-                sh 'cd auth'
-                sh 'npm install'
+                dir('auth') {
+                    sh 'npm install'
+                }
             }
         }
 
