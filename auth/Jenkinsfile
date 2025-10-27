@@ -40,10 +40,12 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
+                        echo $SONAR_HOST_URL
+
                         ${SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.projectKey=auth-service \
                         -Dsonar.projectName=auth-service \
-                        -Dsonar.sources=src \
+                        -Dsonar.sources=. \
                         -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
                         -Dsonar.host.url=$SONAR_HOST_URL \
                         -Dsonar.login=$SONAR_AUTH_TOKEN

@@ -137,26 +137,27 @@ pipeline {
                     script {
                         // Crear sonar-project.properties si no existe
                         if (!fileExists('sonar-project.properties')) {
-                            writeFile file: 'sonar-project.properties', text: """
-sonar.projectKey=auth-service
-sonar.projectName=Authentication Service
-sonar.projectVersion=1.0
-sonar.sources=.
-sonar.exclusions=node_modules/**,tests/**,coverage/**,**/*.test.js,**/*.spec.js
-sonar.javascript.lcov.reportPaths=coverage/lcov.info
-sonar.sourceEncoding=UTF-8
-"""
-                        }
-                        
-                        // Ejecutar análisis de SonarQube
-                        withSonarQubeEnv('SonarQube') {
-                            sh """
-                                sonar-scanner \
-                                    -Dsonar.projectKey=auth-service \
-                                    -Dsonar.sources=. \
-                                    -Dsonar.host.url=${SONAR_HOST_URL} \
-                                    -Dsonar.exclusions=node_modules/**,tests/**,coverage/** || true
+                            writeFile file: 'sonar-project.properties', 
+                            text: """
+                            sonar.projectKey=auth-service
+                            sonar.projectName=Authentication Service
+                            sonar.projectVersion=1.0
+                            sonar.sources=.
+                            sonar.exclusions=node_modules/**,tests/**,coverage/**,**/*.test.js,**/*.spec.js
+                            sonar.javascript.lcov.reportPaths=coverage/lcov.info
+                            sonar.sourceEncoding=UTF-8
                             """
+                            }
+                                                
+                            // Ejecutar análisis de SonarQube
+                        withSonarQubeEnv('SonarQube') {
+                        sh """
+                        sonar-scanner \
+                        -Dsonar.projectKey=auth-service \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.exclusions=node_modules/**,tests/**,coverage/** || true
+                        """
                         }
                     }
                 }
