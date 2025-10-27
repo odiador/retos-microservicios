@@ -12,10 +12,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
                 git branch: 'automatizacion-04', url: 'https://github.com/odiador/retos-microservicios.git'
-                sh 'cd auth'
-                sh 'pwd'
             }
         }
 
@@ -27,6 +24,7 @@ pipeline {
                 echo "==========================================="
                 sh 'node --version'
                 sh 'npm --version'
+                sh 'cd auth'
                 sh 'npm install'
             }
         }
