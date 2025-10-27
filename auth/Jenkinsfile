@@ -37,35 +37,24 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            def scannerHome = tool 'SonarScanner'
-            environment {
-                SONAR_AUTH_TOKEN = credentials('sonarqube-token')
-                SONAR_HOST_URL = 'http://sonarqube:9000'
-            }
-            withSonarQubeEnv() {
-                sh "${scannerHome}/bin/sonar-scanner"
-            }
-
             steps {
-                echo "==========================================="
-                echo "🔍 Analizando calidad de código con SonarQube..."
-                echo "==========================================="
-                dir('auth') {
-                        sh """
-                        echo $SONAR_HOST_URL
-
-                        ${SCANNER_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=auth-service \
-                        -Dsonar.projectName=auth-service \
-                        -Dsonar.sources=. \
-                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                        -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_AUTH_TOKEN
-                    """
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('sonarqube') {
+                        dir('auth') {
+                            sh """
+                                echo "🔍 Ejecutando análisis SonarQube..."
+                                ${scannerHome}/bin/sonar-scanner \
+                                    -Dsonar.projectKey=auth-service \
+                                    -Dsonar.projectName=auth-service \
+                                    -Dsonar.sources=. \
+                                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                                    -Dsonar.host.url=$SONAR_HOST_URL \
+                                    -Dsonar.login=$SONAR_AUTH_TOKEN
+                            """
+                        }
                     }
-                ///withSonarQubeEnv('sonarqube') {
-               ///     
-               ///}
+                }
             }
         }
 
