@@ -43,6 +43,9 @@ pipeline {
             }
 
             steps {
+                echo "==========================================="
+                echo "🔍 Analizando calidad de código con SonarQube..."
+                echo "==========================================="
                 withSonarQubeEnv('sonarqube') {
                     sh """
                         echo $SONAR_HOST_URL
