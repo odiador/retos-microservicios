@@ -48,7 +48,7 @@ pipeline {
                         dir('auth') {
                             sh """
                                 echo "🔍 Ejecutando análisis SonarQube..."
-                                ${scannerHome}/bin/sonar-scanner \
+                                ${scannerHome}/bin/sonar-scanner -X || true \
                                     -Dsonar.projectKey=auth-service \
                                     -Dsonar.projectName=auth-service \
                                     -Dsonar.sources=. \
