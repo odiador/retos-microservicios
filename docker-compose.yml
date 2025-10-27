@@ -116,6 +116,10 @@ services:
       - jenkins_home:/var/jenkins_home
     restart: unless-stopped
 
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+
   # ============================================
   # SONARQUBE - Análisis de Calidad de Código
   # ============================================

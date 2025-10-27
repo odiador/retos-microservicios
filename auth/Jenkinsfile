@@ -1,296 +1,56 @@
-/**
- * Jenkinsfile para Auth Service (Node.js)
- * 
- * Pipeline de CI/CD que incluye:
- * - Checkout del código
- * - Instalación de dependencias
- * - Ejecución de pruebas unitarias
- * - Análisis de calidad con SonarQube
- * - Construcción de imagen Docker
- * - Publicación de reportes
- */
-
 pipeline {
     agent any
-    
+
     tools {
-        nodejs 'NodeJS18'
+        nodejs "node-for-auth_microservice"
     }
-    
+
     environment {
-        // Variables de entorno
-        SERVICE_NAME = 'auth-service'
-        SERVICE_DIR = 'auth'
-        SONAR_HOST_URL = 'http://sonarqube:9000'
-        DOCKER_IMAGE_NAME = 'auth-service'
-        BUILD_VERSION = "${env.BUILD_NUMBER}"
+        SCANNER_HOME = tool "sonarqube"
     }
-    
-    options {
-        // Opciones del pipeline
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timestamps()
-        timeout(time: 30, unit: 'MINUTES')
-        ansiColor('xterm')
-    }
-    
+
     stages {
-        
-        // ============================================
-        // STAGE 1: CHECKOUT
-        // ============================================
-        stage('🔍 Checkout') {
+        stage('Checkout') {
             steps {
-                echo "==========================================="
-                echo "📥 Clonando repositorio..."
-                echo "==========================================="
-                checkout scm
-                
-                script {
-                    // Mostrar información del commit
+                git branch: 'automatizacion-04', url: 'https://github.com/odiador/retos-microservicios.git'
+                sh 'cd auth'
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Run tests') {
+            steps {
+                sh 'npm test || echo "Tests skipped"' // opcional si aún no tienes tests
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
                     sh """
-                        echo "Branch: \${GIT_BRANCH}"
-                        echo "Commit: \${GIT_COMMIT}"
-                        git log -1 --pretty=format:'%an - %s' || true
+                        ${SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=auth-service \
+                        -Dsonar.projectName=auth-service \
+                        -Dsonar.sources=src \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_AUTH_TOKEN
                     """
                 }
             }
         }
-        
-        // ============================================
-        // STAGE 2: INSTALACIÓN DE DEPENDENCIAS
-        // ============================================
-        stage('📦 Install Dependencies') {
+
+        stage('Quality Gate') {
             steps {
-                echo "==========================================="
-                echo "📦 Instalando dependencias de Node.js..."
-                echo "==========================================="
-                
-                dir(SERVICE_DIR) {
-                    sh 'node --version'
-                    sh 'npm --version'
-                    sh 'npm ci --prefer-offline --no-audit'
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
-        }
-        
-        // ============================================
-        // STAGE 3: LINT (Opcional)
-        // ============================================
-        stage('🔍 Code Linting') {
-            steps {
-                echo "==========================================="
-                echo "🔍 Verificando estilo de código..."
-                echo "==========================================="
-                
-                dir(SERVICE_DIR) {
-                    script {
-                        // Si existe ESLint configurado, ejecutarlo
-                        def eslintExists = fileExists('package.json')
-                        if (eslintExists) {
-                            def packageJson = readJSON file: 'package.json'
-                            if (packageJson.scripts?.lint) {
-                                sh 'npm run lint || true'
-                            } else {
-                                echo "⚠️ No se encontró script 'lint' en package.json"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // ============================================
-        // STAGE 4: PRUEBAS UNITARIAS
-        // ============================================
-        stage('🧪 Unit Tests') {
-            steps {
-                echo "==========================================="
-                echo "🧪 Ejecutando pruebas unitarias..."
-                echo "==========================================="
-                
-                dir(SERVICE_DIR) {
-                    script {
-                        // Ejecutar tests si existen
-                        def packageJson = readJSON file: 'package.json'
-                        if (packageJson.scripts?.test) {
-                            sh 'npm test -- --coverage --ci --reporters=default --reporters=jest-junit || true'
-                        } else {
-                            echo "⚠️ No se encontró script 'test' en package.json"
-                            echo "⚠️ Creando reporte de pruebas vacío..."
-                        }
-                    }
-                }
-            }
-        }
-        
-        // ============================================
-        // STAGE 5: ANÁLISIS DE SONARQUBE
-        // ============================================
-        stage('🔍 SonarQube Analysis') {
-            steps {
-                echo "==========================================="
-                echo "🔍 Analizando calidad de código con SonarQube..."
-                echo "==========================================="
-                
-                dir(SERVICE_DIR) {
-                    script {
-                        // Crear sonar-project.properties si no existe
-                        if (!fileExists('sonar-project.properties')) {
-                            writeFile file: 'sonar-project.properties', text: """
-sonar.projectKey=auth-service
-sonar.projectName=Authentication Service
-sonar.projectVersion=1.0
-sonar.sources=.
-sonar.exclusions=node_modules/**,tests/**,coverage/**,**/*.test.js,**/*.spec.js
-sonar.javascript.lcov.reportPaths=coverage/lcov.info
-sonar.sourceEncoding=UTF-8
-"""
-                        }
-                        
-                        // Ejecutar análisis de SonarQube
-                        withSonarQubeEnv('SonarQube') {
-                            sh """
-                                sonar-scanner \
-                                    -Dsonar.projectKey=auth-service \
-                                    -Dsonar.sources=. \
-                                    -Dsonar.host.url=${SONAR_HOST_URL} \
-                                    -Dsonar.exclusions=node_modules/**,tests/**,coverage/** || true
-                            """
-                        }
-                    }
-                }
-            }
-        }
-        
-        // ============================================
-        // STAGE 6: QUALITY GATE
-        // ============================================
-        stage('🚦 Quality Gate') {
-            steps {
-                echo "==========================================="
-                echo "🚦 Verificando Quality Gate de SonarQube..."
-                echo "==========================================="
-                
-                script {
-                    timeout(time: 5, unit: 'MINUTES') {
-                        try {
-                            def qg = waitForQualityGate()
-                            if (qg.status != 'OK') {
-                                echo "⚠️ Quality Gate falló: ${qg.status}"
-                                echo "⚠️ Continuando pipeline pero revisa los resultados en SonarQube"
-                                // No abortamos el pipeline, solo advertimos
-                            } else {
-                                echo "✅ Quality Gate aprobado"
-                            }
-                        } catch (Exception e) {
-                            echo "⚠️ Error verificando Quality Gate: ${e.message}"
-                            echo "⚠️ Continuando pipeline..."
-                        }
-                    }
-                }
-            }
-        }
-        
-        // ============================================
-        // STAGE 7: BUILD DOCKER IMAGE
-        // ============================================
-        stage('🐳 Build Docker Image') {
-            steps {
-                echo "==========================================="
-                echo "🐳 Construyendo imagen Docker..."
-                echo "==========================================="
-                
-                dir(SERVICE_DIR) {
-                    script {
-                        // Construir imagen Docker
-                        sh """
-                            docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} .
-                            docker tag ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} ${DOCKER_IMAGE_NAME}:latest
-                        """
-                        
-                        echo "✅ Imagen construida: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
-                        echo "✅ Tag: ${DOCKER_IMAGE_NAME}:latest"
-                    }
-                }
-            }
-        }
-        
-        // ============================================
-        // STAGE 8: PRUEBAS DE INTEGRACIÓN (Opcional)
-        // ============================================
-        stage('🔗 Integration Tests') {
-            steps {
-                echo "==========================================="
-                echo "🔗 Ejecutando pruebas de integración..."
-                echo "==========================================="
-                
-                script {
-                    // Verificar si existen pruebas de integración
-                    if (fileExists('tests/feature/auth.feature')) {
-                        echo "📝 Pruebas de integración encontradas"
-                        echo "⚠️ Ejecutar con docker-compose en ambiente de testing"
-                        // Aquí se pueden ejecutar pruebas con Cucumber/Behave
-                    } else {
-                        echo "ℹ️ No se encontraron pruebas de integración"
-                    }
-                }
-            }
-        }
-    }
-    
-    // ============================================
-    // POST-BUILD ACTIONS
-    // ============================================
-    post {
-        always {
-            echo "==========================================="
-            echo "📊 Publicando reportes..."
-            echo "==========================================="
-            
-            dir(SERVICE_DIR) {
-                // Publicar resultados de JUnit
-                junit allowEmptyResults: true, testResults: '**/junit.xml, **/test-results/*.xml'
-                
-                // Publicar reporte de cobertura
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'coverage/lcov-report',
-                    reportFiles: 'index.html',
-                    reportName: 'Coverage Report',
-                    reportTitles: 'Code Coverage'
-                ])
-                
-                // Limpiar workspace si es necesario
-                // cleanWs()
-            }
-        }
-        
-        success {
-            echo "==========================================="
-            echo "✅ Pipeline ejecutado exitosamente!"
-            echo "==========================================="
-            echo "Build #${BUILD_NUMBER} completado"
-            echo "Servicio: ${SERVICE_NAME}"
-            echo "Imagen Docker: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
-        }
-        
-        failure {
-            echo "==========================================="
-            echo "❌ Pipeline falló!"
-            echo "==========================================="
-            echo "Build #${BUILD_NUMBER} falló"
-            echo "Servicio: ${SERVICE_NAME}"
-            echo "Revisa los logs para más detalles"
-        }
-        
-        unstable {
-            echo "==========================================="
-            echo "⚠️ Pipeline inestable"
-            echo "==========================================="
-            echo "Algunas pruebas fallaron o el Quality Gate no pasó"
         }
     }
 }
