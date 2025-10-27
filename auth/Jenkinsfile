@@ -19,6 +19,12 @@ pipeline {
 
         stage('Install dependencies') {
             steps {
+                sh 'pwd'
+                echo "==========================================="
+                echo "📦 Instalando dependencias de Node.js..."
+                echo "==========================================="
+                sh 'node --version'
+                sh 'npm --version'
                 sh 'npm install'
             }
         }
