@@ -5,9 +5,9 @@ pipeline {
         nodejs "nodeForAuth"
     }
 
-    environment {
-        SCANNER_HOME = tool "sonarqube"
-    }
+    ///environment {
+    ///    SCANNER_HOME = tool "sonarqube"
+    ///}
 
     stages {
         stage('Checkout') {
@@ -37,9 +37,13 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
+            def scannerHome = tool 'SonarScanner'
             environment {
                 SONAR_AUTH_TOKEN = credentials('sonarqube-token')
                 SONAR_HOST_URL = 'http://sonarqube:9000'
+            }
+            withSonarQubeEnv() {
+                sh "${scannerHome}/bin/sonar-scanner"
             }
 
             steps {
