@@ -1,0 +1,29 @@
+services:
+  sonarqube:
+    build: ./sonarqube
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+
+  jenkins:
+    build: ./jenkins
+    container_name: jenkins-infra
+    ports:
+      - "8090:8080"
+      - "50000:50000"
+    env_file:
+      - ./jenkins/jenkins.env
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    depends_on:
+      - sonarqube
+
+volumes:
+  jenkins_home:
+  sonar_data:
+  sonar_extensions:

@@ -1,0 +1,67 @@
+jenkins:
+  systemMessage: "🚀 Jenkins configurado automáticamente con JCasC"
+
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://jenkins:8080"
+
+  sonarGlobalConfiguration:
+    installations:
+      - name: "sonarqube"
+        serverUrl: "http://sonarqube:9000"
+        serverAuthenticationToken: "${SONAR_AUTH_TOKEN}"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "sonar-token"
+              secret: "${SONAR_AUTH_TOKEN}"
+              description: "Token SonarQube"
+
+tool:
+  nodejs:
+    installations:
+      - name: "nodeForAuth"
+        home: "/usr/local/bin/node"
+
+  sonarRunnerInstallation:
+    installations:
+      - name: "sonarqube"
+        home: "/opt/sonar-scanner"
+
+jobs:
+  - script: >
+      pipelineJob('auth-pipeline') {
+        description('Pipeline para el CI para el microservicio auth 🚀')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/odiador/retos-microservicios.git')
+                }
+                branch('automatizacion-04')
+              }
+            }
+            scriptPath('auth/Jenkinsfile')
+          }
+        }
+        triggers {
+          scm('H/5 * * * *') // cada 5 min revisa cambios
+        }
+      }

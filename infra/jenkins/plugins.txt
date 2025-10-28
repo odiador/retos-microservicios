@@ -1,0 +1,7 @@
+workflow-aggregator
+configuration-as-code
+nodejs
+sonar
+git
+credentials-binding
+job-dsl
