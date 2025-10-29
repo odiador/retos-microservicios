@@ -5,14 +5,45 @@ pipeline {
         nodejs "nodeForAuth"
     }
 
-    ///environment {
-    ///    SCANNER_HOME = tool "sonarqube"
-    ///}
+    environment {
+        SONAR_URL = "http://sonarqube:9000"
+        SONAR_USER = "admin"
+        SONAR_PASS = "admin"
+        TOKEN_FILE = "sonar_token.txt"
+    }
 
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'automatizacion-04', url: 'https://github.com/odiador/retos-microservicios.git'
+            }
+        }
+
+        stage('Generate SonarQube Token') {
+            steps {
+                script {
+                    echo "⏳ Esperando que SonarQube esté listo..."
+                    sh '''
+                    until curl -s $SONAR_URL/api/system/health | grep -q '"health":"GREEN"'; do
+                        echo "Esperando SonarQube..."
+                        sleep 5
+                    done
+                    echo "✅ SonarQube está listo."
+                    '''
+
+                    echo "🔑 Generando token..."
+                    sh '''
+                    RESPONSE=$(curl -s -u $SONAR_USER:$SONAR_PASS \
+                      -X POST "$SONAR_URL/api/user_tokens/generate" \
+                      -d "name=jenkins-auto-$(date +%s)")
+                    echo $RESPONSE | jq -r '.token' > $TOKEN_FILE
+                    TOKEN=$(cat $TOKEN_FILE)
+                    echo "Token generado correctamente."
+                    '''
+
+                    // Cargar token en variable del pipeline
+                    env.SONAR_AUTH_TOKEN = sh(script: "cat $TOKEN_FILE", returnStdout: true).trim()
+                }
             }
         }
 
@@ -37,23 +68,23 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            environment {
-                SONAR_HOST_URL = "http://sonarqube:9000"
-                SONAR_AUTH_TOKEN = credentials('sonarqube-token')
-            }
+            // environment {
+            //     SONAR_HOST_URL = "http://sonarqube:9000"
+            //     SONAR_AUTH_TOKEN = credentials('sonarqube-token')
+            // }
             steps {
                 script {
-                    def scannerHome = tool 'sonarqube'
+                    // def scannerHome = tool 'sonarqube'
                     withSonarQubeEnv('sonarqube') {
                         dir('auth') {
                             sh """
                                 echo "🔍 Ejecutando análisis SonarQube..."
-                                ${scannerHome}/bin/sonar-scanner -X || true \
+                                ${scannerHome}/bin/sonar-scanner \
                                     -Dsonar.projectKey=auth-service \
                                     -Dsonar.projectName=auth-service \
                                     -Dsonar.sources=. \
                                     -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                                    -Dsonar.host.url=$SONAR_HOST_URL \
+                                    -Dsonar.host.url=$SONAR_URL \
                                     -Dsonar.login=$SONAR_AUTH_TOKEN
                             """
                         }
