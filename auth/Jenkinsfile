@@ -13,8 +13,11 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('🔍 Checkout') {
             steps {
+                echo "==========================================="
+                echo "📥 Clonando repositorio..."
+                echo "==========================================="
                 git branch: 'automatizacion-04', url: 'https://github.com/odiador/retos-microservicios.git'
             }
         }
@@ -47,7 +50,7 @@ pipeline {
             }
         }
 
-        stage('Install dependencies') {
+        stage('📦 Install dependencies') {
             steps {
                 sh 'pwd'
                 echo "==========================================="
@@ -61,18 +64,26 @@ pipeline {
             }
         }
 
-        stage('Run tests') {
+        stage('🧪 Run tests') {
             steps {
+                echo "==========================================="
+                echo "🧪 Ejecutando pruebas unitarias..."
+                echo "==========================================="
                 sh 'npm test || echo "Tests skipped"' // opcional si aún no tienes tests
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('🔍 SonarQube Analysis') {
             // environment {
             //     SONAR_HOST_URL = "http://sonarqube:9000"
             //     SONAR_AUTH_TOKEN = credentials('sonarqube-token')
             // }
             steps {
+
+                echo "==========================================="
+                echo "🔍 Analizando calidad de código con SonarQube..."
+                echo "==========================================="
+
                 script {
                     // def scannerHome = tool 'sonarqube'
                     withSonarQubeEnv('sonarqube') {
@@ -93,8 +104,12 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
+        stage('🚦 Quality Gate') {
             steps {
+                echo "==========================================="
+                echo "🚦 Verificando Quality Gate de SonarQube..."
+                echo "==========================================="
+
                 timeout(time: 1, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
