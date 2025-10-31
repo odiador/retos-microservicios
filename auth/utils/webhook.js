@@ -4,6 +4,8 @@ import db from '../db.js'
 const SCHEMA = process.env.DB_SCHEMA || 'auth'
 const MAX_RETRIES = 3
 const RETRY_DELAYS = [1000, 5000, 15000] // 1s, 5s, 15s
+const MAX_RESPONSE_BODY_LENGTH = 5000 // Maximum characters to store from response/error
+const MAX_CONCURRENT_WEBHOOKS = 10 // Maximum concurrent webhook deliveries
 
 /**
  * Generates HMAC signature for webhook payload
@@ -48,7 +50,7 @@ async function sendWebhook(webhook, eventType, eventData, attempt = 1) {
       `INSERT INTO ${SCHEMA}.webhook_deliveries 
        (webhook_id, event_type, payload, response_status, response_body, attempt, delivered_at) 
        VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [webhook.id, eventType, payload, response.status, responseBody.substring(0, 5000), attempt]
+      [webhook.id, eventType, payload, response.status, responseBody.substring(0, MAX_RESPONSE_BODY_LENGTH), attempt]
     )
 
     if (!response.ok) {
@@ -66,12 +68,12 @@ async function sendWebhook(webhook, eventType, eventData, attempt = 1) {
       `INSERT INTO ${SCHEMA}.webhook_deliveries 
        (webhook_id, event_type, payload, error, attempt) 
        VALUES ($1, $2, $3, $4, $5)`,
-      [webhook.id, eventType, payload, error.message.substring(0, 5000), attempt]
+      [webhook.id, eventType, payload, error.message.substring(0, MAX_RESPONSE_BODY_LENGTH), attempt]
     )
 
     // Retry logic
     if (attempt < MAX_RETRIES) {
-      const delay = RETRY_DELAYS[attempt - 1] || 15000
+      const delay = RETRY_DELAYS[attempt] || 15000 // Use next delay index since attempt starts at 1
       console.log(`[webhook] Retrying in ${delay}ms...`)
       
       await new Promise(resolve => setTimeout(resolve, delay))
@@ -103,17 +105,21 @@ export async function triggerWebhooks(eventType, eventData) {
 
     console.log(`[webhook] Triggering ${result.rows.length} webhook(s) for event: ${eventType}`)
 
-    // Send webhooks in parallel (but don't wait for retries)
-    const promises = result.rows.map(webhook => 
-      sendWebhook(webhook, eventType, eventData).catch(err => {
-        console.error(`[webhook] Unhandled error for webhook ${webhook.id}:`, err)
-      })
-    )
-
-    // Fire and forget - don't block the main request
-    Promise.all(promises).catch(err => {
-      console.error('[webhook] Error in webhook batch:', err)
-    })
+    // Send webhooks with concurrency limit to prevent overwhelming the system
+    const webhooks = result.rows
+    const batchSize = MAX_CONCURRENT_WEBHOOKS
+    
+    for (let i = 0; i < webhooks.length; i += batchSize) {
+      const batch = webhooks.slice(i, i + batchSize)
+      const promises = batch.map(webhook => 
+        sendWebhook(webhook, eventType, eventData).catch(err => {
+          console.error(`[webhook] Unhandled error for webhook ${webhook.id}:`, err)
+        })
+      )
+      
+      // Process each batch sequentially, but webhooks within batch are parallel
+      await Promise.allSettled(promises)
+    }
 
   } catch (error) {
     console.error('[webhook] Error triggering webhooks:', error)
