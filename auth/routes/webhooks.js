@@ -411,8 +411,8 @@ webhooks.openapi(createRoute({
     }
 
     const { id } = c.req.valid('param')
-    const query = c.req.query()
-    const limit = Math.min(100, parseInt(query.limit || '50', 10))
+    const queryParams = c.req.valid('query')
+    const limit = Math.min(100, parseInt(queryParams.limit || '50', 10))
 
     const deliveryList = await webhookService.getWebhookDeliveries(id, decoded.uid, limit)
 

@@ -6,6 +6,7 @@ const MAX_RETRIES = 3
 const RETRY_DELAYS = [1000, 5000, 15000] // 1s, 5s, 15s
 const MAX_RESPONSE_BODY_LENGTH = 5000 // Maximum characters to store from response/error
 const MAX_CONCURRENT_WEBHOOKS = 10 // Maximum concurrent webhook deliveries
+const WEBHOOK_TIMEOUT_MS = 5000 // 5 second timeout for webhook requests
 
 /**
  * Generates HMAC signature for webhook payload
@@ -40,7 +41,7 @@ async function sendWebhook(webhook, eventType, eventData, attempt = 1) {
         'User-Agent': 'Microservicios-Webhook/1.0',
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
     })
 
     const responseBody = await response.text()
@@ -73,7 +74,7 @@ async function sendWebhook(webhook, eventType, eventData, attempt = 1) {
 
     // Retry logic
     if (attempt < MAX_RETRIES) {
-      const delay = RETRY_DELAYS[attempt] || 15000 // Use next delay index since attempt starts at 1
+      const delay = RETRY_DELAYS[attempt - 1] || 15000 // Use correct index for delay array
       console.log(`[webhook] Retrying in ${delay}ms...`)
       
       await new Promise(resolve => setTimeout(resolve, delay))
@@ -199,12 +200,13 @@ export async function updateWebhook(webhookId, userId, updates) {
   }
 
   sets.push(`updated_at = NOW()`)
-  params.push(webhookId, userId)
+  params.push(webhookId)
+  params.push(userId)
 
   const result = await db(
     `UPDATE ${SCHEMA}.webhooks 
      SET ${sets.join(', ')} 
-     WHERE id = $${i++} AND user_id = $${i++}
+     WHERE id = $${i} AND user_id = $${i + 1}
      RETURNING id, user_id, name, url, events, active, created_at, updated_at`,
     params
   )
