@@ -4,6 +4,7 @@ import { app } from './app.js'
 import auth from './routes/auth.js'
 import health from './routes/health.js'
 import users from './routes/users.js'
+import webhooks from './routes/webhooks.js'
 import { swaggerUI } from '@hono/swagger-ui'
 import db from './db.js'
 import bcrypt from 'bcryptjs'
@@ -48,6 +49,7 @@ async function ensureAdminUser() {
 app.route('/', health)
 app.route('/', auth)
 app.route('/', users)
+app.route('/', webhooks)
 
 // Servir la documentación OpenAPI desde el archivo YAML estático
 app.get('/doc', async (c) => {
