@@ -22,33 +22,10 @@ pipeline {
             }
         }
 
-        stage('Generate SonarQube Token') {
-            steps {
-                script {
-                    echo "⏳ Esperando que SonarQube esté listo..."
-                    sh '''
-                    until curl -s $SONAR_URL/api/system/health | grep -q '"health":"GREEN"'; do
-                        echo "Esperando SonarQube..."
-                        sleep 5
-                    done
-                    echo "✅ SonarQube está listo."
-                    '''
-
-                    echo "🔑 Generando token..."
-                    sh '''
-                    RESPONSE=$(curl -s -u $SONAR_USER:$SONAR_PASS \
-                      -X POST "$SONAR_URL/api/user_tokens/generate" \
-                      -d "name=jenkins-auto-$(date +%s)")
-                    echo $RESPONSE | jq -r '.token' > $TOKEN_FILE
-                    TOKEN=$(cat $TOKEN_FILE)
-                    echo "Token generado correctamente."
-                    '''
-
-                    // Cargar token en variable del pipeline
-                    env.SONAR_AUTH_TOKEN = sh(script: "cat $TOKEN_FILE", returnStdout: true).trim()
-                }
-            }
-        }
+    // El stage para generar un token en SonarQube se ha eliminado porque
+    // el token ya se gestiona desde la UI de Jenkins (Credentials).
+    // Si necesitas regenerarlo desde pipeline, podemos volver a añadir
+    // la lógica aquí, pero no es necesario cuando la credencial existe.
 
         stage('📦 Install dependencies') {
             steps {
@@ -74,10 +51,10 @@ pipeline {
         }
 
         stage('🔍 SonarQube Analysis') {
-            // environment {
-            //     SONAR_HOST_URL = "http://sonarqube:9000"
-            //     SONAR_AUTH_TOKEN = credentials('sonarqube-token')
-            // }
+            environment {
+                // Usar la credencial creada en la UI de Jenkins (id: 'sonarqube-token')
+                SONAR_AUTH_TOKEN = credentials('sonarqube-token')
+            }
             steps {
 
                 echo "==========================================="
@@ -85,7 +62,10 @@ pipeline {
                 echo "==========================================="
 
                 script {
-                    // def scannerHome = tool 'sonarqube'
+                    // Obtener la instalación del scanner configurada en Jenkins (nombre: 'sonar-scanner')
+                    // Ajusta el nombre si en tu Jenkins el tool tiene otro id.
+                    def scannerHome = tool 'sonar-scanner'
+
                     withSonarQubeEnv('sonarqube') {
                         dir('auth') {
                             sh """
@@ -96,7 +76,7 @@ pipeline {
                                     -Dsonar.sources=. \
                                     -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
                                     -Dsonar.host.url=$SONAR_URL \
-                                    -Dsonar.login=$SONAR_AUTH_TOKEN
+                                    -Dsonar.login=${SONAR_AUTH_TOKEN}
                             """
                         }
                     }
