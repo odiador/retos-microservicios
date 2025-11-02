@@ -51,35 +51,13 @@ pipeline {
         }
 
         stage('🔍 SonarQube Analysis') {
-            environment {
-                // Usar la credencial creada en la UI de Jenkins (id: 'sonarqube-token')
-                SONAR_AUTH_TOKEN = credentials('sonarqube-token')
-            }
             steps {
-
                 echo "==========================================="
                 echo "🔍 Analizando calidad de código con SonarQube..."
                 echo "==========================================="
 
-                script {
-                    // Obtener la instalación del scanner configurada en Jenkins (nombre: 'sonar-scanner')
-                    // Ajusta el nombre si en tu Jenkins el tool tiene otro id.
-                    def scannerHome = tool 'sonar-scanner'
-
-                    withSonarQubeEnv('sonarqube') {
-                        dir('auth') {
-                            sh """
-                                echo "🔍 Ejecutando análisis SonarQube..."
-                                ${scannerHome}/bin/sonar-scanner \
-                                    -Dsonar.projectKey=auth-service \
-                                    -Dsonar.projectName=auth-service \
-                                    -Dsonar.sources=. \
-                                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                                    -Dsonar.host.url=$SONAR_URL \
-                                    -Dsonar.login=${SONAR_AUTH_TOKEN}
-                            """
-                        }
-                    }
+                withSonarQubeEnv('sonarqube') {
+                    sh './gradlew sonarqube'
                 }
             }
         }
