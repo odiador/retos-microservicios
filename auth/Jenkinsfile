@@ -54,14 +54,17 @@ pipeline {
                 echo "==========================================="
 
                 withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    sonar-scanner \
-                    -Dsonar.projectKey=auth-service \
-                    -Dsonar.sources=auth \
-                    -Dsonar.host.url=$SONAR_HOST_URL \
-                    -Dsonar.login=$SONAR_AUTH_TOKEN
+                    sh """
+                        sonar-scanner \
+                            -Dsonar.projectKey=auth-service \
+                            -Dsonar.sources=auth \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.login=$SONAR_AUTH_TOKEN
+                    """
                 }
             }
         }
+
 
         stage('🚦 Quality Gate') {
             steps {
