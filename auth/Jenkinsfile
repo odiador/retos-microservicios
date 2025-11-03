@@ -53,9 +53,10 @@ pipeline {
                 echo "🔍 Analizando calidad de código con SonarQube..."
                 echo "==========================================="
 
-                def scannerHome = tool 'SonarScanner';
-
                 withSonarQubeEnv("${SONARQUBE_ENV}") {
+
+                    def scannerHome = tool 'SonarScanner';
+
                     sh """
                         sonar-scanner \
                             -Dsonar.projectKey=auth-service \
