@@ -6,10 +6,7 @@ pipeline {
     }
 
     environment {
-        SONAR_URL = "http://sonarqube:9000"
-        SONAR_USER = "admin"
-        SONAR_PASS = "admin"
-        TOKEN_FILE = "sonar_token.txt"
+        SONARQUBE_ENV = 'sonarqube'
     }
 
     stages {
@@ -56,8 +53,12 @@ pipeline {
                 echo "🔍 Analizando calidad de código con SonarQube..."
                 echo "==========================================="
 
-                withSonarQubeEnv('sonarqube') {
-                    sh './gradlew sonarqube'
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sonar-scanner \
+                    -Dsonar.projectKey=auth-service \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=$SONAR_HOST_URL \
+                    -Dsonar.login=$SONAR_AUTH_TOKEN
                 }
             }
         }
