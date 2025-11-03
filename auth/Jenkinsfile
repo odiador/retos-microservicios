@@ -53,20 +53,21 @@ pipeline {
                 echo "🔍 Analizando calidad de código con SonarQube..."
                 echo "==========================================="
 
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-
-                    def scannerHome = tool 'SonarScanner';
-
-                    sh """
-                        sonar-scanner \
-                            -Dsonar.projectKey=auth-service \
-                            -Dsonar.sources=auth \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.login=$SONAR_AUTH_TOKEN
-                    """
+                script {
+                    withSonarQubeEnv("${SONARQUBE_ENV}") {
+                        def scannerHome = tool 'SonarScanner'
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                                -Dsonar.projectKey=auth-service \
+                                -Dsonar.sources=auth \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.login=$SONAR_AUTH_TOKEN
+                        """
+                    }
                 }
             }
         }
+
 
 
         stage('🚦 Quality Gate') {
