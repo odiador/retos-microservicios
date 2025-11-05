@@ -10,15 +10,16 @@ import bcrypt from 'bcryptjs'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import logger from './logger.js'
 
 // Soporte para dotenv si la flag --use-env está presente
 if (process.argv.includes('--use-env')) {
   try {
     const dotenv = await import('dotenv')
     dotenv.config()
-    console.log('[dotenv] Variables de entorno cargadas desde .env')
+    logger.info('[dotenv] Variables de entorno cargadas desde .env')
   } catch (err) {
-    console.error('[dotenv] Error al cargar dotenv:', err && err.message ? err.message : err)
+    logger.error('[dotenv] Error al cargar dotenv', err)
   }
 }
 
@@ -35,12 +36,12 @@ async function ensureAdminUser() {
     if (existing.rows.length === 0) {
       const hash = await bcrypt.hash(password, 10)      
       await db(`INSERT INTO ${SCHEMA}.users (username,email,password,first_name,last_name,role,status) VALUES ($1,$2,$3,$4,$5,'admin','active')`, [username, email, hash, 'Admin', 'User'])
-      console.log('[seed] Usuario admin creado: admin@gmail.com / admin123')
+      logger.info('[seed] Usuario admin creado: admin@gmail.com / admin123')
     } else {
-      console.log('[seed] Usuario admin ya existe')
+      logger.info('[seed] Usuario admin ya existe')
     }
   } catch (err) {
-    console.error('[seed] Error creando usuario admin', err && err.message ? err.message : err)
+    logger.error('[seed] Error creando usuario admin', err)
   }
 }
 
@@ -77,5 +78,5 @@ app.notFound((c) => c.text('Recurso no encontrado', 404))
 await ensureAdminUser()
 
 serve({ fetch: app.fetch, port: 3500 }, (info) => {
-  console.log(`Server is running on http://localhost:${info.port}`);
+  logger.info(`Server is running on http://localhost:${info.port}`)
 },)

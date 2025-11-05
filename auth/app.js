@@ -1,5 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { errorHandler, logger } from './middleware/error-handler.js'
+import { errorHandler, requestLogger } from './middleware/error-handler.js'
 
 export const app = new OpenAPIHono({
   openapi: '3.0.0',
@@ -35,5 +35,5 @@ export const app = new OpenAPIHono({
 })
 
 // Middleware de logging y manejo de errores
-app.use('*', logger)
+app.use('*', requestLogger)
 app.onError(errorHandler)

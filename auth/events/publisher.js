@@ -1,4 +1,5 @@
 import amqplib from 'amqplib';
+import logger from '../logger.js'
 
 const RABBIT_URL = process.env.RABBITMQ_URL || 'amqp://admin:securepass@rabbitmq:5672';
 const EXCHANGE = process.env.AUTH_EVENTS_EXCHANGE || 'auth.events';
@@ -11,10 +12,10 @@ async function connect() {
     const conn = await amqplib.connect(RABBIT_URL);
     channel = await conn.createChannel();
     await channel.assertExchange(EXCHANGE, 'topic', { durable: true, autoDelete: false });
-    console.log('[events] Conectado a RabbitMQ');
+    logger.info('[events] Conectado a RabbitMQ');
     return channel;
   } catch (err) {
-    console.error('[events] Error conectando a RabbitMQ', err.message);
+    logger.error('[events] Error conectando a RabbitMQ', err);
     throw err;
   }
 }
@@ -24,10 +25,10 @@ async function publish(routingKey, payload = {}) {
     const ch = await connect();
     const buf = Buffer.from(JSON.stringify(payload));
     const result = await ch.publish(EXCHANGE, routingKey, buf, { persistent: true });
-    console.log(`[events] Publicado ${routingKey}:`, JSON.stringify(payload, null, 2));
+    logger.info(`[events] Publicado ${routingKey}: ${JSON.stringify(payload)}`);
     return result;
   } catch (err) {
-    console.error('[events] Error publicando evento', err.message);
+    logger.error('[events] Error publicando evento', err);
     return false;
   }
 }

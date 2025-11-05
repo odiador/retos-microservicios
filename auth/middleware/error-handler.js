@@ -1,8 +1,10 @@
 import { z } from 'zod'
+import appLogger from '../logger.js'
 
 // Middleware para manejar errores de validación de Zod
 export const errorHandler = async (err, c) => {
-  console.error('Error:', err)
+  // use structured logger
+  appLogger.error('Error en middleware', err)
 
   // Manejar errores de validación de Zod
   if (err instanceof z.ZodError) {
@@ -65,17 +67,19 @@ export const errorHandler = async (err, c) => {
 }
 
 // Middleware para logging de requests
-export const logger = async (c, next) => {
+export const requestLogger = async (c, next) => {
   const start = Date.now()
   const method = c.req.method
   const path = c.req.path
 
-  console.log(`[${new Date().toISOString()}] ${method} ${path} - Request started`)
+  // Emit structured request start log
+  appLogger.info('request_start', { method, path, timestamp: new Date().toISOString() })
 
   await next()
 
   const duration = Date.now() - start
   const status = c.res.status
 
-  console.log(`[${new Date().toISOString()}] ${method} ${path} - ${status} - ${duration}ms`)
+  // Emit structured request end log
+  appLogger.info('request_end', { method, path, status, duration })
 }
