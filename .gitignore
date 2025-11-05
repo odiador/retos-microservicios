@@ -5,3 +5,4 @@ dist
 .DS_Store
 /sms/venv
 /sms/.env
+observability/loki/data

@@ -5,10 +5,40 @@ import sys
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioException
 import logging
+import sys
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configurar logging para enviar a STDOUT y añadir etiqueta de servicio
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(message)s')
+handler.setFormatter(formatter)
+
+logger = logging.getLogger('sms')
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    logger.addHandler(handler)
+
+def log_json(level, message, payload=None, meta=None, logger_name='sms'):
+    rec = {
+        'timestamp': __import__('datetime').datetime.utcnow().isoformat() + 'Z',
+        'level': level,
+        'service': 'sms',
+        'host': os.environ.get('HOSTNAME') or None,
+        'logger': logger_name,
+        'message': message
+    }
+    if payload is not None:
+        rec['payload'] = payload
+    if meta:
+        rec['meta'] = meta
+    json_msg = json.dumps(rec, default=str, ensure_ascii=False)
+    if level == 'INFO':
+        logger.info(json_msg)
+    elif level == 'WARN':
+        logger.warning(json_msg)
+    elif level == 'ERROR':
+        logger.error(json_msg)
+    else:
+        logger.debug(json_msg)
 
 # Configuración RabbitMQ
 RABBIT_URL = os.environ.get('RABBITMQ_URL', 'amqp://admin:securepass@rabbitmq:5672')
@@ -25,34 +55,34 @@ TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
 twilio_client = None
 if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
     twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-    logger.info("[sms-consumer] Twilio configurado correctamente")
+    log_json('INFO', 'Twilio configurado correctamente')
 else:
-    logger.warning("[sms-consumer] Twilio no configurado - solo se logearán los SMS")
+    log_json('WARN', 'Twilio no configurado - solo se logearan los SMS')
 
 def handle_sms_message(body):
     """Procesar mensaje de SMS desde RabbitMQ"""
     try:
         event_data = json.loads(body)
-        logger.info(f"[sms-consumer] Procesando SMS: {event_data}")
-        
+        log_json('INFO', 'Procesando SMS', payload=event_data)
+
         recipient = event_data.get('recipient')
         message = event_data.get('message')
         event_type = event_data.get('type')
-        
+
         if not recipient or not message:
-            logger.error(f"[sms-consumer] Datos incompletos - recipient: {recipient}, message: {message}")
+            log_json('ERROR', 'Datos incompletos', payload={'recipient': recipient, 'message': message})
             return
-        
+
         # Si Twilio no está configurado, solo logear
         if not twilio_client:
-            logger.info(f"[sms-consumer] SMS simulado a {recipient}: {message}")
+            log_json('INFO', 'SMS simulado', payload={'to': recipient, 'message': message})
             return
-        
+
         # Validar formato del número de teléfono
         if not recipient.startswith('+'):
-            logger.warning(f"[sms-consumer] Número sin formato internacional: {recipient}")
+            log_json('WARN', 'Número sin formato internacional', payload={'recipient': recipient})
             recipient = '+57' + recipient.lstrip('+0')  # Agregar código de Colombia por defecto
-        
+
         # Enviar SMS real con Twilio
         try:
             response = twilio_client.messages.create(
@@ -60,33 +90,34 @@ def handle_sms_message(body):
                 from_=TWILIO_PHONE_NUMBER,
                 to=recipient
             )
-            logger.info(f"[sms-consumer] SMS enviado exitosamente a {recipient}, SID: {response.sid}")
-            
+            log_json('INFO', 'SMS enviado exitosamente', payload={'to': recipient, 'sid': getattr(response, 'sid', None)})
+
         except TwilioException as e:
-            logger.error(f"[sms-consumer] Error de Twilio enviando SMS a {recipient}: {str(e)}")
+            log_json('ERROR', 'Error de Twilio enviando SMS', payload={'to': recipient, 'error': str(e)})
         except Exception as e:
-            logger.error(f"[sms-consumer] Error inesperado enviando SMS a {recipient}: {str(e)}")
-            
+            log_json('ERROR', 'Error inesperado enviando SMS', payload={'to': recipient, 'error': str(e)})
+
     except json.JSONDecodeError as e:
-        logger.error(f"[sms-consumer] Error parseando JSON: {str(e)}")
+        log_json('ERROR', 'Error parseando JSON', payload={'error': str(e), 'body': body})
     except Exception as e:
-        logger.error(f"[sms-consumer] Error procesando mensaje: {str(e)}")
+        log_json('ERROR', 'Error procesando mensaje', payload={'error': str(e), 'body': body})
 
 def callback(ch, method, properties, body):
     """Callback para procesar mensajes de RabbitMQ"""
     try:
-        logger.info(f"[sms-consumer] Mensaje recibido: {body.decode()}")
-        handle_sms_message(body.decode())
+        decoded = body.decode()
+        log_json('INFO', 'Mensaje recibido', payload={'raw': decoded})
+        handle_sms_message(decoded)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
-        logger.error(f"[sms-consumer] Error en callback: {str(e)}")
+        log_json('ERROR', 'Error en callback', payload={'error': str(e)})
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 def start_consumer():
     """Iniciar consumer de RabbitMQ para SMS"""
     try:
         # Conectar a RabbitMQ
-        logger.info(f"[sms-consumer] Conectando a RabbitMQ: {RABBIT_URL}")
+        log_json('INFO', 'Conectando a RabbitMQ', payload={'url': RABBIT_URL})
         connection = pika.BlockingConnection(pika.URLParameters(RABBIT_URL))
         channel = connection.channel()
         
@@ -99,14 +130,14 @@ def start_consumer():
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue=QUEUE, on_message_callback=callback)
         
-        logger.info(f'[sms-consumer] Esperando mensajes de SMS en queue {QUEUE}. Para salir presiona CTRL+C')
+        log_json('INFO', 'Esperando mensajes de SMS', payload={'queue': QUEUE})
         channel.start_consuming()
         
     except pika.exceptions.AMQPConnectionError as e:
-        logger.error(f"[sms-consumer] Error conectando a RabbitMQ: {str(e)}")
+        log_json('ERROR', 'Error conectando a RabbitMQ', payload={'error': str(e)})
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info('[sms-consumer] Detenido por usuario')
+        log_json('INFO', 'Detenido por usuario')
         try:
             channel.stop_consuming()
             connection.close()
@@ -114,7 +145,7 @@ def start_consumer():
             pass
         sys.exit(0)
     except Exception as e:
-        logger.error(f"[sms-consumer] Error inesperado: {str(e)}")
+        log_json('ERROR', 'Error inesperado', payload={'error': str(e)})
         sys.exit(1)
 
 if __name__ == '__main__':

@@ -6,11 +6,42 @@ import logging
 import re
 from dotenv import load_dotenv
 import sys
+import json
 
 app = Flask(__name__)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configurar logging para enviar a STDOUT y añadir etiqueta de servicio
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(message)s')
+handler.setFormatter(formatter)
+
+logger = logging.getLogger('sms.http')
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    logger.addHandler(handler)
+
+def log_json(level, message, payload=None, meta=None, logger_name='sms.http'):
+    rec = {
+        'timestamp': __import__('datetime').datetime.utcnow().isoformat() + 'Z',
+        'level': level,
+        'service': 'sms',
+        'host': os.environ.get('HOSTNAME') or None,
+        'logger': logger_name,
+        'message': message
+    }
+    if payload is not None:
+        rec['payload'] = payload
+    if meta:
+        rec['meta'] = meta
+    json_msg = json.dumps(rec, default=str, ensure_ascii=False)
+    if level == 'INFO':
+        logger.info(json_msg)
+    elif level == 'WARN':
+        logger.warning(json_msg)
+    elif level == 'ERROR':
+        logger.error(json_msg)
+    else:
+        logger.debug(json_msg)
 
 # Load environment variables from .env file only if --use-env flag is provided
 if len(sys.argv) > 1 and sys.argv[1] == '--use-env':
@@ -89,9 +120,9 @@ def send_sms():
             from_=TWILIO_PHONE_NUMBER,
             to=formatted_phone
         )
-        
-        logger.info(f"SMS sent successfully. SID: {twilio_message.sid}, To: {formatted_phone}")
-        
+
+        log_json('INFO', 'SMS sent successfully', payload={'sid': getattr(twilio_message, 'sid', None), 'to': formatted_phone})
+
         return jsonify({
             'success': True,
             'message': 'SMS sent successfully',
@@ -103,14 +134,14 @@ def send_sms():
         }), 200
         
     except TwilioException as e:
-        logger.error(f"Twilio error: {str(e)}")
+        log_json('ERROR', 'Twilio error', payload={'error': str(e)})
         return jsonify({
             'error': 'Failed to send SMS',
             'details': str(e)
         }), 500
         
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        log_json('ERROR', 'Unexpected error', payload={'error': str(e)})
         return jsonify({
             'error': 'Internal server error',
             'details': str(e)
@@ -138,14 +169,14 @@ def get_sms_status(message_sid):
         })
         
     except TwilioException as e:
-        logger.error(f"Twilio error getting message status: {str(e)}")
+        log_json('ERROR', 'Twilio error getting message status', payload={'error': str(e)})
         return jsonify({
             'error': 'Failed to get message status',
             'details': str(e)
         }), 500
         
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        log_json('ERROR', 'Unexpected error getting message status', payload={'error': str(e)})
         return jsonify({
             'error': 'Internal server error'
         }), 500
@@ -153,8 +184,8 @@ def get_sms_status(message_sid):
 if __name__ == '__main__':
     # Verificar configuración de Twilio
     if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER]):
-        logger.error("Twilio credentials not configured properly")
+        log_json('ERROR', 'Twilio credentials not configured properly')
         exit(1)
     
-    logger.info(f"Starting Notification Service on port {PORT}")
+    log_json('INFO', 'Starting Notification Service', payload={'port': PORT})
     app.run(host='0.0.0.0', port=PORT, debug=False)
