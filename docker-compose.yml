@@ -168,6 +168,63 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # ============================================
+  # STACK DE OBSERVABILIDAD
+  # ============================================
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: retos-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./observability/loki/data:/loki
+      - ./observability/loki-config.yaml:/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: retos-promtail
+    volumes:
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /etc/hostname:/etc/hostname:ro
+      - ./observability/promtail-config.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: retos-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  monitor:
+    build: ./monitor
+    container_name: retos-monitor
+    ports:
+      - "8085:8085"
+    env_file:
+      - ./.env
+    depends_on:
+      auth:
+        condition: service_started
+      orchestrator:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   dbdata:
   rabbitmq_data:
@@ -177,3 +234,5 @@ volumes:
   sonarqube_logs:
   sonarqube_temp:
   sonar_db_data:
+  grafana_data:
+  loki_data:
