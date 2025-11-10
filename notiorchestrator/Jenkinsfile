@@ -197,11 +197,11 @@ sonar.sourceEncoding=UTF-8
                     script {
                         // Construir imagen Docker
                         sh """
-                            docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} .
-                            docker tag ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} ${DOCKER_IMAGE_NAME}:latest
+                            docker build -t ${DOCKER_IMAGE_NAME} .
+                            docker tag ${DOCKER_IMAGE_NAME} ${DOCKER_IMAGE_NAME}:latest
                         """
-                        
-                        echo "✅ Imagen construida: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
+
+                        echo "✅ Imagen construida: ${DOCKER_IMAGE_NAME}"
                         echo "✅ Tag: ${DOCKER_IMAGE_NAME}:latest"
                     }
                 }
@@ -299,7 +299,7 @@ sonar.sourceEncoding=UTF-8
             echo "═══════════════════════════════════════════"
             echo "Build #${BUILD_NUMBER} completado"
             echo "Servicio: ${SERVICE_NAME}"
-            echo "Imagen Docker: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
+            echo "Imagen Docker: ${DOCKER_IMAGE_NAME}:latest"
         }
         
         failure {
