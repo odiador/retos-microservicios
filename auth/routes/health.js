@@ -1,26 +1,11 @@
-import { OpenAPIHono } from '@hono/zod-openapi'
+import { Hono } from 'hono'
 import db from '../db.js'
 
-const health = new OpenAPIHono()
+const health = new Hono()
 const startTime = new Date().toISOString()
 
 // General health endpoint
-health.openapi({
-  method: 'get',
-  path: '/health',
-  tags: ['Health'],
-  security: [], // Endpoint público - no requiere autenticación
-  responses: {
-    200: {
-      description: 'Health check completo del servicio',
-      content: {
-        'application/json': {
-          schema: { type: 'object' }
-        }
-      }
-    }
-  }
-}, async (c) => {
+health.get('/health', async (c) => {
   let dbStatus = 'UP'
   try {
     await db('SELECT 1')
@@ -61,22 +46,7 @@ health.openapi({
 })
 
 // Readiness probe
-health.openapi({
-  method: 'get',
-  path: '/health/ready',
-  tags: ['Health'],
-  security: [],
-  responses: {
-    200: {
-      description: 'El servicio está listo para recibir tráfico',
-      content: {
-        'application/json': {
-          schema: { type: 'object' }
-        }
-      }
-    }
-  }
-}, async (c) => {
+health.get('/health/ready', async (c) => {
   let dbReady = true
   try {
     await db('SELECT 1')
@@ -103,22 +73,7 @@ health.openapi({
 })
 
 // Liveness probe
-health.openapi({
-  method: 'get',
-  path: '/health/live',
-  tags: ['Health'],
-  security: [],
-  responses: {
-    200: {
-      description: 'El servicio está vivo',
-      content: {
-        'application/json': {
-          schema: { type: 'object' }
-        }
-      }
-    }
-  }
-}, (c) => {
+health.get('/health/live', (c) => {
   return c.json({
     status: 'UP',
     check: [
