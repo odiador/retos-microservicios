@@ -33,7 +33,6 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
         timeout(time: 45, unit: 'MINUTES')
-        ansiColor('xterm')
     }
     
     stages {
@@ -121,7 +120,7 @@ pipeline {
                         if (!fileExists('sonar-project.properties')) {
                             writeFile file: 'sonar-project.properties', text: """
 sonar.projectKey=orchestrator-service
-sonar.projectName=Notification Orchestrator
+sonar.projectName=orchestrator-service
 sonar.projectVersion=1.0
 
 # Paths
@@ -143,7 +142,7 @@ sonar.sourceEncoding=UTF-8
                         }
                         
                         // Ejecutar análisis de SonarQube
-                        withSonarQubeEnv('SonarQube') {
+                        withSonarQubeEnv('sonarqube') {
                             sh """
                                 ./gradlew sonarqube \
                                     -Dsonar.projectKey=orchestrator-service \
