@@ -188,7 +188,6 @@ services:
     volumes:
       - /var/log:/var/log
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /etc/hostname:/etc/hostname:ro
       - ./observability/promtail-config.yaml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
     depends_on:
