@@ -1,0 +1,56 @@
+Característica: Servicio de Mensajería SMS - Arquitectura Event-Driven # feature/sms.feature:2
+  Como sistema de microservicios
+  Quiero procesar mensajes SMS a través de eventos
+  Para mantener seguridad y acoplamiento bajo
+  Antecedentes:   # feature/sms.feature:7
+
+  Escenario: Procesar evento de envío de SMS exitosamente                        # feature/sms.feature:11
+    Dado que RabbitMQ está configurado                                           # steps/integration_steps.py:74
+    Y el exchange SMS "auth.events" existe                                       # steps/sms_steps.py:28
+    Cuando envío un mensaje al exchange "auth.events" con routing key "send.sms" # steps/sms_steps.py:48
+      | field     | value                 |
+      | recipient | +573001112233         |
+      | message   | Hola, este es un test |
+      | type      | notification          |
+    Entonces el mensaje debe ser procesado por el consumer                       # steps/sms_steps.py:77
+    Y debe generarse un log estructurado con level "INFO"                        # steps/sms_steps.py:86
+    Y el log debe contener "event": "sms_sent"                                   # steps/sms_steps.py:93
+    Y el log debe contener "recipient": "+573001112233"                          # steps/sms_steps.py:93
+
+  Escenario: Procesar evento con número de teléfono inválido                     # feature/sms.feature:22
+    Dado que RabbitMQ está configurado                                           # steps/integration_steps.py:74
+    Y el exchange SMS "auth.events" existe                                       # steps/sms_steps.py:28
+    Cuando envío un mensaje al exchange "auth.events" con routing key "send.sms" # steps/sms_steps.py:48
+      | field     | value             |
+      | recipient | 12345             |
+      | message   | Mensaje de prueba |
+      | type      | test              |
+    Entonces el mensaje debe ser rechazado por validación                        # steps/sms_steps.py:104
+    Y debe generarse un log estructurado con level "ERROR"                       # steps/sms_steps.py:86
+    Y el log debe contener "event": "sms_validation_error"                       # steps/sms_steps.py:93
+
+  Escenario: Health check del servicio SMS      # feature/sms.feature:32
+    Dado que RabbitMQ está configurado          # steps/integration_steps.py:74
+    Y el exchange SMS "auth.events" existe      # steps/sms_steps.py:28
+    Cuando hago un GET a "/health"              # steps/sms_steps.py:111
+    Entonces la respuesta debe tener código 200 # steps/sms_steps.py:121
+    Y el cuerpo debe contener "status": "UP"    # steps/sms_steps.py:127
+    Y el cuerpo debe contener "service": "sms"  # steps/sms_steps.py:127
+
+  Escenario: Health check de readiness del servicio SMS    # feature/sms.feature:38
+    Dado que RabbitMQ está configurado                     # steps/integration_steps.py:74
+    Y el exchange SMS "auth.events" existe                 # steps/sms_steps.py:28
+    Cuando hago un GET a "/health/ready"                   # steps/sms_steps.py:111
+    Entonces la respuesta debe tener código 200            # steps/sms_steps.py:121
+    Y el cuerpo debe contener "status": "READY"            # steps/sms_steps.py:127
+    Y el cuerpo debe contener "checks" como array          # steps/sms_steps.py:138
+    Y cada check debe tener "name", "status" y "timestamp" # steps/sms_steps.py:156
+
+  Escenario: Health check de liveness del servicio SMS  # feature/sms.feature:45
+    Dado que RabbitMQ está configurado                  # steps/integration_steps.py:74
+    Y el exchange SMS "auth.events" existe              # steps/sms_steps.py:28
+    Cuando hago un GET a "/health/live"                 # steps/sms_steps.py:111
+    Entonces la respuesta debe tener código 200         # steps/sms_steps.py:121
+    Y el cuerpo debe contener "status": "ALIVE"         # steps/sms_steps.py:127
+    Y el cuerpo debe contener "uptime" como número      # steps/sms_steps.py:138
+

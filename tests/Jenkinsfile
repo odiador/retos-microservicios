@@ -1,0 +1,160 @@
+pipeline {
+    agent any
+
+    environment {
+        // Variables de ambiente para los tests
+        SMS_SERVICE_URL = 'http://notifications:6379'
+        AUTH_URL = 'http://auth:3500'
+        ORCHESTRATOR_URL = 'http://orchestrator:8080'
+        MONITOR_URL = 'http://monitor:8085'
+        RABBITMQ_URL = 'amqp://admin:securepass@rabbitmq:5672'
+        LOKI_URL = 'http://loki:3100'
+        GRAFANA_URL = 'http://grafana:3000'
+        
+        DOCKER_NETWORK = 'retos-microservicios_default'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo '✅ Código fuente descargado'
+            }
+        }
+
+        stage('Verificar Servicios') {
+            steps {
+                script {
+                    echo '🔍 Verificando que los servicios estén disponibles...'
+                    
+                    // Esperar a que los servicios estén listos
+                    sh '''
+                        echo "Esperando servicios..."
+                        timeout=60
+                        elapsed=0
+                        
+                        while [ $elapsed -lt $timeout ]; do
+                            if curl -f http://localhost:6379/health > /dev/null 2>&1; then
+                                echo "✅ SMS service disponible"
+                                break
+                            fi
+                            sleep 2
+                            elapsed=$((elapsed + 2))
+                        done
+                    '''
+                }
+            }
+        }
+
+        stage('Instalar Dependencias de Tests') {
+            steps {
+                script {
+                    echo '📦 Instalando dependencias para tests BDD...'
+                    sh '''
+                        cd tests
+                        python3 -m venv venv || true
+                        . venv/bin/activate || python3 -m pip install --user -r requirements.txt
+                        pip install -r requirements.txt
+                    '''
+                }
+            }
+        }
+
+        stage('Ejecutar Tests BDD - SMS') {
+            steps {
+                script {
+                    echo '🧪 Ejecutando tests BDD del servicio SMS...'
+                    sh '''
+                        cd tests
+                        . venv/bin/activate || true
+                        
+                        # Configurar variables de ambiente
+                        export SMS_SERVICE_URL=http://localhost:6379
+                        export AUTH_URL=http://localhost:3500
+                        export RABBITMQ_URL=amqp://admin:securepass@localhost:5672
+                        
+                        # Ejecutar tests de SMS
+                        behave feature/sms.feature --no-capture --format pretty --junit --junit-directory ../test-results/bdd
+                    '''
+                }
+            }
+        }
+
+        stage('Ejecutar Tests BDD - Observabilidad') {
+            steps {
+                script {
+                    echo '🧪 Ejecutando tests BDD de Observabilidad...'
+                    sh '''
+                        cd tests
+                        . venv/bin/activate || true
+                        
+                        # Configurar variables de ambiente
+                        export LOKI_URL=http://localhost:3100
+                        export GRAFANA_URL=http://localhost:3000
+                        export MONITOR_URL=http://localhost:8085
+                        
+                        # Ejecutar tests de observabilidad
+                        behave feature/observability.feature --no-capture --format pretty --junit --junit-directory ../test-results/bdd || true
+                    '''
+                }
+            }
+        }
+
+        stage('Ejecutar Tests BDD - Todos') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    echo '🧪 Ejecutando TODOS los tests BDD...'
+                    sh '''
+                        cd tests
+                        . venv/bin/activate || true
+                        
+                        # Ejecutar todos los tests
+                        behave feature/ --no-capture --format pretty --junit --junit-directory ../test-results/bdd
+                    '''
+                }
+            }
+        }
+
+        stage('Generar Reporte de Tests') {
+            steps {
+                script {
+                    echo '📊 Generando reportes de tests...'
+                    sh '''
+                        cd tests
+                        . venv/bin/activate || true
+                        
+                        # Generar reporte HTML con Behave
+                        behave feature/ --format html --outfile ../test-results/bdd-report.html || true
+                        
+                        # Generar reporte JSON
+                        behave feature/ --format json --outfile ../test-results/bdd-report.json || true
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Publicar resultados de tests
+            junit allowEmptyResults: true, testResults: 'test-results/bdd/*.xml'
+            
+            // Archivar reportes
+            archiveArtifacts artifacts: 'test-results/**/*.html,test-results/**/*.json', allowEmptyArchive: true
+            
+            echo '📋 Resultados de tests publicados'
+        }
+        
+        success {
+            echo '✅ Pipeline BDD completado exitosamente'
+        }
+        
+        failure {
+            echo '❌ Pipeline BDD falló'
+            echo '💡 Revisa los reportes en test-results/'
+        }
+    }
+}

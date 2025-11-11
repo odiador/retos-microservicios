@@ -1,36 +1,49 @@
-Feature: Servicio de Mensajería SMS
-  Como cliente del sistema
-  Quiero poder enviar mensajes SMS y consultar su estado
-  Para notificar a los usuarios correctamente
+# language: es
+Característica: Servicio de Mensajería SMS - Arquitectura Event-Driven
+  Como sistema de microservicios
+  Quiero procesar mensajes SMS a través de eventos
+  Para mantener seguridad y acoplamiento bajo
 
-  Background:
-    Given el servicio de notificaciones está disponible
+  Antecedentes:
+    Dado que RabbitMQ está configurado
+    Y el exchange SMS "auth.events" existe
 
-  Scenario: Enviar un SMS exitosamente
-    When hago un POST a "/notifications/sms" con:
-      | phone       | +573001112233       |
-      | message     | Hola, este es un test |
-    Then la respuesta debe tener código 200
-    And el cuerpo debe contener "success": true
-    And el cuerpo debe contener "SMS sent successfully"
+  Escenario: Procesar evento de envío de SMS exitosamente
+    Cuando envío un mensaje al exchange "auth.events" con routing key "send.sms":
+      | field     | value                      |
+      | recipient | +573001112233              |
+      | message   | Hola, este es un test      |
+      | type      | notification               |
+    Entonces el mensaje debe ser procesado por el consumer
+    Y debe generarse un log estructurado con level "INFO"
+    Y el log debe contener "event": "sms_sent"
+    Y el log debe contener "recipient": "+573001112233"
 
-  Scenario: Enviar un SMS con número inválido
-    When hago un POST a "/notifications/sms" con:
-      | phone   | 12345          |
-      | message | Hola prueba    |
-    Then la respuesta debe tener código 400
-    And el cuerpo debe contener "Invalid phone number format"
+  Escenario: Procesar evento con número de teléfono inválido
+    Cuando envío un mensaje al exchange "auth.events" con routing key "send.sms":
+      | field     | value                      |
+      | recipient | 12345                      |
+      | message   | Mensaje de prueba          |
+      | type      | test                       |
+    Entonces el mensaje debe ser rechazado por validación
+    Y debe generarse un log estructurado con level "ERROR"
+    Y el log debe contener "event": "sms_validation_error"
 
-  Scenario: Enviar un SMS con mensaje demasiado largo
-    When hago un POST a "/notifications/sms" con:
-      | phone   | +573001112233 |
-      | message | <un mensaje de más de 1600 caracteres> |
-    Then la respuesta debe tener código 400
-    And el cuerpo debe contener "Message too long"
+  Escenario: Health check del servicio SMS
+    Cuando hago un GET a "/health"
+    Entonces la respuesta debe tener código 200
+    Y el cuerpo debe contener "status": "UP"
+    Y el cuerpo debe contener "service": "sms"
 
-  Scenario: Consultar estado de un SMS enviado
-    Given he enviado un SMS con SID "SMXXXXXXXXXXXXXXXX"
-    When hago un GET a "/notifications/sms/SMXXXXXXXXXXXXXXXX"
-    Then la respuesta debe tener código 200
-    And el cuerpo debe contener "success": true
-    And el cuerpo debe incluir el campo "status"
+  Escenario: Health check de readiness del servicio SMS
+    Cuando hago un GET a "/health/ready"
+    Entonces la respuesta debe tener código 200
+    Y el cuerpo debe contener "status": "READY"
+    Y el cuerpo debe contener "checks" como array
+    Y cada check debe tener "name", "status" y "timestamp"
+
+  Escenario: Health check de liveness del servicio SMS
+    Cuando hago un GET a "/health/live"
+    Entonces la respuesta debe tener código 200
+    Y el cuerpo debe contener "status": "ALIVE"
+    Y el cuerpo debe contener "uptime" como número
