@@ -24,6 +24,9 @@ dependencies {
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     // Loki logback appender for direct logging to Loki if desired
     implementation ("com.github.loki4j:loki-logback-appender:2.0.1")
+    // Logback JSON layout for structured logging
+    implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
+    implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.amqp:spring-rabbit-test")
