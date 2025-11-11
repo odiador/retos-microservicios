@@ -1,31 +1,29 @@
 #!/bin/bash
 
-# Script para iniciar tanto el servicio HTTP como el consumer de RabbitMQ
+# Script para iniciar el consumer de SMS y health checks
+# Los endpoints REST han sido eliminados por seguridad
 
-echo "Iniciando servicio SMS..."
+echo "Iniciando servicio SMS (solo consumer y health checks)..."
 
 # Función para limpiar procesos al recibir señal
 cleanup() {
     echo "Deteniendo servicios..."
-    kill $HTTP_PID $CONSUMER_PID 2>/dev/null
+    kill $CONSUMER_PID $HEALTH_PID 2>/dev/null
     exit 0
 }
 
 # Configurar trap para limpieza
 trap cleanup SIGTERM SIGINT
 
-# Iniciar servicio HTTP en background
-echo "Iniciando servidor HTTP en puerto 6379..."
-gunicorn --bind 0.0.0.0:6379 message:app &
-HTTP_PID=$!
-
-# Esperar un poco para que el servidor HTTP inicie
-sleep 3
-
-# Iniciar consumer de RabbitMQ en background
+# Iniciar consumer de RabbitMQ
 echo "Iniciando consumer de RabbitMQ..."
 python consumer.py &
 CONSUMER_PID=$!
 
+# Iniciar servicio de health checks (opcional, solo para monitoreo)
+echo "Iniciando servicio de health checks en puerto 6379..."
+gunicorn --bind 0.0.0.0:6379 message:app &
+HEALTH_PID=$!
+
 # Esperar a que termine cualquiera de los procesos
-wait $HTTP_PID $CONSUMER_PID
+wait $CONSUMER_PID $HEALTH_PID

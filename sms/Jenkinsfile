@@ -1,0 +1,146 @@
+pipeline {
+    agent {
+        docker {
+            image 'python:3.11-slim'
+            args '-u root'
+        }
+    }
+
+    environment {
+        SONAR_HOST_URL = credentials('sonar-host-url')
+        SONAR_TOKEN = credentials('sonar-token')
+        RABBITMQ_URL = 'amqp://admin:securepass@rabbitmq:5672'
+        TWILIO_ACCOUNT_SID = credentials('twilio-account-sid')
+        TWILIO_AUTH_TOKEN = credentials('twilio-auth-token')
+        TWILIO_PHONE_NUMBER = credentials('twilio-phone-number')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    cd sms
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                sh '''
+                    cd sms
+                    python -m pytest test_consumer.py -v --junitxml=test-results.xml
+                '''
+            }
+            post {
+                always {
+                    junit 'sms/test-results.xml'
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            steps {
+                script {
+                    // Esperar a que RabbitMQ esté disponible
+                    sh '''
+                        cd sms
+                        # Enviar mensaje de prueba al bus
+                        python test_sms.py "+573001234567" "Mensaje de integración desde Jenkins"
+                    '''
+                }
+            }
+        }
+
+        stage('Coverage Report') {
+            steps {
+                sh '''
+                    cd sms
+                    python -m pytest test_consumer.py --cov=consumer --cov-report=xml --cov-report=html
+                '''
+            }
+            post {
+                always {
+                    publishCoverage adapters: [coberturaAdapter('sms/coverage.xml')]
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                            cd sms
+                            ${scannerHome}/bin/sonar-scanner \\
+                                -Dsonar.projectKey=sms-service \\
+                                -Dsonar.projectName='SMS Notification Service' \\
+                                -Dsonar.sources=. \\
+                                -Dsonar.tests=. \\
+                                -Dsonar.test.inclusions=test_*.py \\
+                                -Dsonar.python.coverage.reportPaths=coverage.xml \\
+                                -Dsonar.python.xunit.reportPath=test-results.xml
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh '''
+                    cd sms
+                    docker build -t retos-sms:${BUILD_NUMBER} .
+                '''
+            }
+        }
+
+        stage('Deploy to Staging') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh '''
+                    docker tag retos-sms:${BUILD_NUMBER} retos-sms:latest
+                    # Aquí irían comandos de deployment
+                    echo "Deploying to staging environment"
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            sh '''
+                cd sms
+                # Limpiar archivos temporales
+                rm -f test-results.xml coverage.xml
+                rm -rf htmlcov
+            '''
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
