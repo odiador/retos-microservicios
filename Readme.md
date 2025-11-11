@@ -1,34 +1,94 @@
-# Retos
+# Retos de Microservicios
 
-## Reto 1
+## Testing
 
-- Haga uso de gherkin para diseñar un conjunto de pruebas de aceptación encaminadas a probar el funcionamiento de cada una de las operaciones de uno de sus microservicios.
-- Haciendo uso de Bruno, Postman o un programa similar cree una suit de pruebas que permita verificar el correcto funcionamiento de su API basado en los casos de prueba diseñados (debe implementar al menos dos pruebas), la suit deberá usar variables con el fin de ser ejecutada en su totalidad sin intervención.
+### Reto 1 ✅
+- ✅ Pruebas Gherkin (BDD) en `/tests/feature/`
+- ✅ Suite automatizada con Behave (Python)
 
-## Reto 2
+### Reto 2 ✅
+- ✅ Automatización con Behave + pytest
+- ✅ Validación JSON en steps
 
-- Haciendo uso de cucumber y Rest Assured cree el código que permita probar el correcto funcionamiento de su microservicio basado en los casos de prueba diseñados.
-- Use json-schema para validar la estructura de las respuestas de su API e incluya el paso de validación en su automatización.
+### Reto 3 ✅
+- ✅ Faker integrado en tests
+- ✅ Reportes: HTML, JSON, JUnit (Behave)
+- ✅ Código versionado en Git
 
-## Reto 3
+### Reto 4 ✅
+- ✅ Jenkins en `docker-compose.yml`
+- ✅ SonarQube en `docker-compose.yml`
 
-- Use Faker o una herramienta similar para la generación aleatoria de datos para sus pruebas.
-- Investigue, adapte y use una herramienta o framework para la generación del reportede sus pruebas.
-- Versione su código de pruebas usando git.
+### Reto 5 ✅
+- ✅ Pipeline integrado en `Jenkinsfile`
+- ✅ Clonado automático de código
+- ✅ Pruebas unitarias (SMS + Auth)
+- ✅ Análisis de calidad (SonarQube)
+- ✅ Ejecución de pruebas BDD
+- ✅ Reportes integrados en Jenkins
 
-## Reto 4
+## Observabilidad
 
-- En su docker-compouse adicione una instancia de jenkins el cual será usado como motor de IC.
-- En su docker-compouse adicione una instancia de sonar o un proyecto similar que permita verificar la calidad del código de sus proyectos.
+### Reto 1 ✅
+- ✅ Sistema de Logs: Loki 2.9.2
+- ✅ Desplegado en docker-compose
+- ✅ Registro síncrono y asíncrono
 
-## Reto 5
+### Reto 2 ✅
+- ✅ Logs integrados en Auth (Node.js)
+- ✅ Logs integrados en SMS (Python)
+- ✅ Logs JSON estructurados
+- ✅ Promtail recolectando logs
 
-Configure integre jenkins y sonar de tal forma que permita para al menos uno de sus
-microservicios :
+### Reto 3 ✅
+- ✅ Health checks implementados:
+  - Auth: `/health`, `/health/ready`, `/health/live`
+  - SMS: `/health`, `/health/ready`, `/health/live`
+  - Orchestrator: `/actuator/health`
 
-- Clonar su proyecto.
-- Verificar su funcionamiento mediante pruebas unitarias.
-- Verificar la calidad del código.
-- Clonar y ejecutar su proyecto de automatización de pruebas.
-- Integrar y verificar el reporte de pruebas en jenkins
-- Reportar resultados
+### Reto 4 ✅
+- ✅ Microservicio Monitor (Go)
+- ✅ Registro de servicios: `POST /services`
+- ✅ Estado general: `GET /services`
+- ✅ Estado específico: `GET /services/{name}`
+- ✅ Health checks: `/`, `/live`, `/ready`
+- ✅ Notificaciones vía RabbitMQ
+- ✅ Monitoreo periódico con goroutines
+
+### Reto 5 ✅
+- ✅ Pruebas BDD del monitor: `/tests/feature/monitor.feature`
+- ✅ Pruebas de integración completa: `/tests/feature/integration.feature`
+- ✅ Steps implementados: `monitor_steps.py`, `integration_steps.py`
+- ✅ Verificación de sistema completo end-to-end
+
+## Ejecución
+
+```bash
+# Iniciar todos los servicios
+docker-compose up -d
+
+# Ejecutar pruebas BDD
+cd tests
+pip install -r requirements.txt
+behave feature/
+
+# Ver logs en Grafana
+# http://localhost:3000
+
+# Jenkins CI/CD
+# http://localhost:8081
+
+# SonarQube
+# http://localhost:9000
+```
+
+## Arquitectura
+
+- **Auth**: Node.js + PostgreSQL + JWT
+- **SMS**: Python + Twilio + RabbitMQ
+- **Orchestrator**: Java Spring Boot + RabbitMQ
+- **Monitor**: Go + RabbitMQ
+- **Observability**: Loki + Promtail + Grafana
+- **CI/CD**: Jenkins + SonarQube
+- **Messaging**: RabbitMQ
+- **Database**: PostgreSQL

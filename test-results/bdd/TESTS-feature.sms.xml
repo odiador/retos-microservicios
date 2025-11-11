@@ -1,0 +1,81 @@
+<testsuite name="feature.sms.Servicio de Mensajería SMS - Arquitectura Event-Driven" tests="5" errors="0" failures="0" skipped="0" time="0.0" timestamp="2025-11-10T16:17:08.793696" hostname="debiamador"><testcase classname="feature.sms.Servicio de Mensajería SMS - Arquitectura Event-Driven" name="Procesar evento de envío de SMS exitosamente" status="untested" time="0"><system-out>
+<![CDATA[
+@scenario.begin
+  Escenario: Procesar evento de envío de SMS exitosamente
+    Dado que RabbitMQ está configurado ... untested in 0.000s
+    Y el exchange SMS "auth.events" existe ... untested in 0.000s
+    Cuando envío un mensaje al exchange "auth.events" con routing key "send.sms" ... untested in 0.000s
+      | field     | value                 |
+      | recipient | +573001112233         |
+      | message   | Hola, este es un test |
+      | type      | notification          |
+    Entonces el mensaje debe ser procesado por el consumer ... untested in 0.000s
+    Y debe generarse un log estructurado con level "INFO" ... untested in 0.000s
+    Y el log debe contener "event": "sms_sent" ... untested in 0.000s
+    Y el log debe contener "recipient": "+573001112233" ... untested in 0.000s
+
+@scenario.end
+--------------------------------------------------------------------------------
+]]>
+</system-out></testcase><testcase classname="feature.sms.Servicio de Mensajería SMS - Arquitectura Event-Driven" name="Procesar evento con número de teléfono inválido" status="untested" time="0"><system-out>
+<![CDATA[
+@scenario.begin
+  Escenario: Procesar evento con número de teléfono inválido
+    Dado que RabbitMQ está configurado ... untested in 0.000s
+    Y el exchange SMS "auth.events" existe ... untested in 0.000s
+    Cuando envío un mensaje al exchange "auth.events" con routing key "send.sms" ... untested in 0.000s
+      | field     | value             |
+      | recipient | 12345             |
+      | message   | Mensaje de prueba |
+      | type      | test              |
+    Entonces el mensaje debe ser rechazado por validación ... untested in 0.000s
+    Y debe generarse un log estructurado con level "ERROR" ... untested in 0.000s
+    Y el log debe contener "event": "sms_validation_error" ... untested in 0.000s
+
+@scenario.end
+--------------------------------------------------------------------------------
+]]>
+</system-out></testcase><testcase classname="feature.sms.Servicio de Mensajería SMS - Arquitectura Event-Driven" name="Health check del servicio SMS" status="untested" time="0"><system-out>
+<![CDATA[
+@scenario.begin
+  Escenario: Health check del servicio SMS
+    Dado que RabbitMQ está configurado ... untested in 0.000s
+    Y el exchange SMS "auth.events" existe ... untested in 0.000s
+    Cuando hago un GET a "/health" ... untested in 0.000s
+    Entonces la respuesta debe tener código 200 ... untested in 0.000s
+    Y el cuerpo debe contener "status": "UP" ... untested in 0.000s
+    Y el cuerpo debe contener "service": "sms" ... untested in 0.000s
+
+@scenario.end
+--------------------------------------------------------------------------------
+]]>
+</system-out></testcase><testcase classname="feature.sms.Servicio de Mensajería SMS - Arquitectura Event-Driven" name="Health check de readiness del servicio SMS" status="untested" time="0"><system-out>
+<![CDATA[
+@scenario.begin
+  Escenario: Health check de readiness del servicio SMS
+    Dado que RabbitMQ está configurado ... untested in 0.000s
+    Y el exchange SMS "auth.events" existe ... untested in 0.000s
+    Cuando hago un GET a "/health/ready" ... untested in 0.000s
+    Entonces la respuesta debe tener código 200 ... untested in 0.000s
+    Y el cuerpo debe contener "status": "READY" ... untested in 0.000s
+    Y el cuerpo debe contener "checks" como array ... untested in 0.000s
+    Y cada check debe tener "name", "status" y "timestamp" ... untested in 0.000s
+
+@scenario.end
+--------------------------------------------------------------------------------
+]]>
+</system-out></testcase><testcase classname="feature.sms.Servicio de Mensajería SMS - Arquitectura Event-Driven" name="Health check de liveness del servicio SMS" status="untested" time="0"><system-out>
+<![CDATA[
+@scenario.begin
+  Escenario: Health check de liveness del servicio SMS
+    Dado que RabbitMQ está configurado ... untested in 0.000s
+    Y el exchange SMS "auth.events" existe ... untested in 0.000s
+    Cuando hago un GET a "/health/live" ... untested in 0.000s
+    Entonces la respuesta debe tener código 200 ... untested in 0.000s
+    Y el cuerpo debe contener "status": "ALIVE" ... untested in 0.000s
+    Y el cuerpo debe contener "uptime" como número ... untested in 0.000s
+
+@scenario.end
+--------------------------------------------------------------------------------
+]]>
+</system-out></testcase></testsuite>
