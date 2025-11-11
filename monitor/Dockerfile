@@ -1,15 +1,31 @@
-FROM node:18-alpine
+# Build stage
+FROM golang:1.21-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY package.json .
-RUN npm install --production
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
 
-COPY . .
+# Copy source code
+COPY main.go .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o monitor .
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates wget
+
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/monitor .
 
 EXPOSE 8085
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8085/health-check || exit 1
+  CMD wget --no-verbose --tries=1 -O /dev/null http://localhost:8085/health || exit 1
 
-CMD ["node", "index.js"]
+CMD ["./monitor"]
