@@ -198,7 +198,7 @@ sonar.sourceEncoding=UTF-8
                 dir(SERVICE_DIR) {
                     script {
                         // Ejecutar pruebas de Cucumber si existen
-                        def cucumberExists = fileExists('app/src/test/resources/features')
+                        def cucumberExists = fileExists('app/test/resources/features')
                         if (cucumberExists) {
                             sh './gradlew test --tests CucumberTestRunner --no-daemon || true'
                         } else {
