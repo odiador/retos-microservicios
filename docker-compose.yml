@@ -45,6 +45,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  profiles:
+    build: ./profiles
+    ports:
+      - "3600:3600"
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   orchestrator:
     build: ./notiorchestrator
     ports:

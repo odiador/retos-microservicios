@@ -281,6 +281,12 @@ const autoRegisterServices = async () => {
       notificationEmails: process.env.ALERT_EMAILS?.split(',') || []
     },
     {
+      name: 'profiles',
+      endpoint: 'http://profiles:3600/health',
+      frequency: 30000,
+      notificationEmails: process.env.ALERT_EMAILS?.split(',') || []
+    },
+    {
       name: 'orchestrator',
       endpoint: 'http://orchestrator:8080/actuator/health',
       frequency: 30000,
