@@ -563,11 +563,196 @@ func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 // ============================================
+// HANDLER - DOCUMENTACIÓN
+// ============================================
+
+func (g *Gateway) handleDocsRoot(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(`
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Gateway - Documentación</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .docs-link {
+            display: inline-block;
+            margin: 15px 0;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .docs-link:hover {
+            transform: translateY(-2px);
+        }
+        .info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            line-height: 1.6;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 API Gateway</h1>
+        <p class="subtitle">Retos Microservicios - Documentación Interactiva</p>
+        
+        <a href="/docs/swagger" class="docs-link">📖 Ir a la documentación (Swagger UI)</a>
+        
+        <div class="info">
+            <strong>Endpoints disponibles:</strong>
+            <ul>
+                <li><strong>POST</strong> /api/v1/auth/login - Iniciar sesión</li>
+                <li><strong>POST</strong> /api/v1/auth/register - Registrar usuario</li>
+                <li><strong>GET</strong> /api/v1/users/{username}/profile - Obtener perfil</li>
+                <li><strong>PATCH</strong> /api/v1/users/{username}/profile - Actualizar perfil</li>
+                <li><strong>DELETE</strong> /api/v1/users/{username} - Eliminar cuenta</li>
+                <li><strong>GET</strong> /health - Health check</li>
+            </ul>
+        </div>
+        
+        <div class="info">
+            <strong>Recursos:</strong>
+            <ul>
+                <li><a href="/docs/openapi.yaml" style="color: #667eea;">Ver OpenAPI Spec (YAML)</a></li>
+                <li><a href="/docs/openapi.json" style="color: #667eea;">Ver OpenAPI Spec (JSON)</a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+	`))
+}
+
+func (g *Gateway) handleOpenAPIYAML(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/yaml")
+	w.Header().Set("Content-Disposition", "inline; filename=openapi.yaml")
+	// Sirve el archivo YAML desde ../docs/openapi.yaml
+	http.ServeFile(w, r, "../docs/openapi.yaml")
+}
+
+func (g *Gateway) handleOpenAPIJSON(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "inline; filename=openapi.json")
+	// Genera JSON a partir del YAML (en una aplicación real, usa un conversor)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Use /docs/openapi.yaml para ver la especificación completa",
+		"swagger_ui": "http://localhost:8000/docs/swagger",
+	})
+}
+
+func (g *Gateway) handleSwaggerUI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(`
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Gateway - Swagger UI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui.css">
+    <style>
+        html { box-sizing: border-box; overflow-y: scroll; }
+        * { box-sizing: inherit; }
+        body {
+            margin: 0;
+            background: #fafafa;
+            font-family: sans-serif;
+            color: #3b4151;
+        }
+        .topbar {
+            background-color: #1e293b !important;
+        }
+        .swagger-ui .info .title {
+            color: #1e293b;
+        }
+        .swagger-ui .btn {
+            background-color: #0ea5e9 !important;
+            border-color: #0ea5e9 !important;
+        }
+        .swagger-ui .btn:hover {
+            background-color: #0284c7 !important;
+            border-color: #0284c7 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            window.ui = SwaggerUIBundle({
+                url: "/docs/openapi.yaml",
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                tryItOutEnabled: true,
+                validatorUrl: null,
+            });
+        }
+    </script>
+</body>
+</html>
+	`))
+}
+
+// ============================================
 // CONFIGURACIÓN DE RUTAS
 // ============================================
 
 func (g *Gateway) setupRoutes() *mux.Router {
 	router := mux.NewRouter()
+
+	// Documentación
+	router.HandleFunc("/docs", g.handleDocsRoot).Methods("GET")
+	router.HandleFunc("/docs/swagger", g.handleSwaggerUI).Methods("GET")
+	router.HandleFunc("/docs/openapi.yaml", g.handleOpenAPIYAML).Methods("GET")
+	router.HandleFunc("/docs/openapi.json", g.handleOpenAPIJSON).Methods("GET")
 
 	// Health check
 	router.HandleFunc("/health", g.handleHealth).Methods("GET")
@@ -616,6 +801,12 @@ func main() {
 	log.Println("===========================================")
 	log.Printf("API Gateway started on port %s", config.Port)
 	log.Println("===========================================")
+	log.Println("📚 Documentación:")
+	log.Println("  GET  /docs                  - Portal de documentación")
+	log.Println("  GET  /docs/swagger          - Swagger UI (pruebas interactivas)")
+	log.Println("  GET  /docs/openapi.yaml    - OpenAPI spec (YAML)")
+	log.Println("  GET  /docs/openapi.json    - OpenAPI spec (JSON)")
+	log.Println("===========================================")
 	log.Println("Upstream services:")
 	log.Printf("  - Auth:        %s", config.AuthServiceURL)
 	log.Printf("  - Profiles:    %s (future)", config.ProfileServiceURL)
@@ -629,6 +820,10 @@ func main() {
 	log.Println("  PATCH  /api/v1/users/{username}/profile")
 	log.Println("  GET    /health")
 	log.Println("===========================================")
+	log.Println("🔗 Abre en tu navegador:")
+	log.Printf("   http://localhost:%s/docs/swagger", config.Port)
+	log.Println("===========================================")
+
 
 	// Iniciar servidor
 	addr := ":" + config.Port

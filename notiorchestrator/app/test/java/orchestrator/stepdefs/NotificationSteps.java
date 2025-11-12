@@ -23,6 +23,7 @@ public class NotificationSteps {
     @When("recibo un evento {string} con:")
     public void recibo_un_evento_con(String eventType, io.cucumber.datatable.DataTable dataTable) {
         requestBody.clear();
+        System.out.println("Preparing request for event type: " + eventType);
         requestBody.put("eventType", eventType);
         requestBody.putAll(dataTable.asMap(String.class, String.class));
 

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Gateway - Documentación Interactiva</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui.css">
+    <style>
+        html {
+            box-sizing: border-box;
+            overflow: -moz-scrollbars-vertical;
+            overflow-y: scroll;
+        }
+
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
+        }
+
+        body {
+            margin: 0;
+            background: #fafafa;
+            font-family: sans-serif;
+            color: #3b4151;
+        }
+
+        .swagger-ui {
+            max-width: 1560px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .swagger-ui .topbar {
+            background-color: #1e293b;
+            padding: 10px 0;
+        }
+
+        .swagger-ui .info .title {
+            color: #1e293b;
+        }
+
+        .swagger-ui .btn {
+            background-color: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+
+        .swagger-ui .btn:hover {
+            background-color: #0284c7;
+            border-color: #0284c7;
+        }
+
+        /* Headers personalizados */
+        .custom-header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+
+        .custom-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 32px;
+        }
+
+        .custom-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .info-banner {
+            background: #e0f2fe;
+            border-left: 4px solid #0ea5e9;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #0c4a6e;
+        }
+
+        .info-banner strong {
+            color: #075985;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .feature-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-item::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="custom-header">
+        <h1>🚀 API Gateway - Retos Microservicios</h1>
+        <p>Documentación interactiva y panel de pruebas</p>
+    </div>
+
+    <div class="swagger-ui">
+        <div class="info-banner">
+            <strong>ℹ️ Información:</strong> Usa esta interfaz para explorar todos los endpoints disponibles, 
+            leer documentación completa y realizar pruebas en tiempo real contra el API.
+        </div>
+
+        <div class="feature-list">
+            <div class="feature-item">Autenticación con JWT</div>
+            <div class="feature-item">Gestión de usuarios</div>
+            <div class="feature-item">Health check integrado</div>
+            <div class="feature-item">CORS habilitado</div>
+        </div>
+    </div>
+
+    <div id="swagger-ui"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-standalone-preset.js"></script>
+    <script>
+        // Determinar la URL base del spec según dónde se está sirviendo
+        const currentUrl = window.location.href.split('?')[0];
+        const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/'));
+        const specUrl = baseUrl + '/openapi.yaml';
+
+        window.onload = function() {
+            // Build a system
+            const ui = SwaggerUIBundle({
+                url: specUrl,
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                filter: true,
+                showRequestHeaders: true,
+                requestInterceptor: function(request) {
+                    // Agregar información en la consola
+                    console.log('Making request to:', request.url);
+                    return request;
+                },
+                responseInterceptor: function(response) {
+                    console.log('Response:', response.status, response.url);
+                    return response;
+                },
+                // Configurar intentos de prueba
+                tryItOutEnabled: true,
+                validatorUrl: null, // Desactivar validación remota si no está disponible
+            });
+
+            window.ui = ui;
+        }
+    </script>
+</body>
+</html>

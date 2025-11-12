@@ -1,0 +1,787 @@
+openapi: 3.0.0
+info:
+  title: Retos Microservicios - API Gateway
+  description: |
+    Gateway centralizado que actúa como punto de entrada único para todos los microservicios.
+    
+    ## Características principales:
+    - Autenticación y gestión de sesiones
+    - Registro de nuevas cuentas
+    - Gestión unificada de perfiles de usuario
+    - Health check integrado
+    - CORS habilitado
+    - Logging centralizado
+    
+    ## Servicios aguas arriba:
+    - **Auth Service**: Gestión de autenticación y cuentas (puerto 3500)
+    - **Orchestrator Service**: Orquestación de eventos y notificaciones (puerto 8080)
+    - **Profile Service**: Gestión de perfiles de usuario (futuro)
+    
+  version: 1.0.0
+  contact:
+    name: Equipo de Microservicios
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8000
+    description: Desarrollo local
+  - url: http://localhost:8000/api/v1
+    description: API v1 (con prefijo)
+  - url: https://api.example.com
+    description: Producción
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health Check
+      summary: Verificar estado del gateway
+      description: Retorna el estado actual del API Gateway y sus servicios aguas arriba
+      operationId: getHealth
+      responses:
+        '200':
+          description: Gateway está operativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                success:
+                  value:
+                    status: UP
+                    service: api-gateway
+                    timestamp: '2025-11-12T10:30:00Z'
+                    upstreams:
+                      auth: 'http://auth:3500'
+                      orchestrator: 'http://orchestrator:8080'
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Autenticación
+      summary: Iniciar sesión
+      description: |
+        Autentica un usuario y retorna un token JWT válido.
+        
+        El token debe incluirse en el header `Authorization: Bearer <token>` 
+        para las peticiones autenticadas.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              success:
+                value:
+                  username: pepito
+                  password: SecurePassword123!
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                success:
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    user:
+                      id: '550e8400-e29b-41d4-a716-446655440000'
+                      username: pepito
+                      email: pepito@example.com
+                      role: user
+                      createdAt: '2025-11-01T09:30:00Z'
+        '400':
+          description: Credenciales inválidas o datos mal formados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuario o contraseña incorrectos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Servicio de autenticación no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Autenticación
+      summary: Registrar nueva cuenta
+      description: |
+        Crea una nueva cuenta de usuario en el sistema.
+        
+        Validaciones:
+        - Email debe ser único en el sistema
+        - Username debe tener entre 3-20 caracteres
+        - Contraseña debe cumplir con políticas de seguridad
+        - Teléfono es opcional pero si se proporciona debe ser válido
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              complete:
+                value:
+                  username: pepito
+                  email: pepito@example.com
+                  password: SecurePassword123!
+                  firstName: Pepito
+                  lastName: García
+                  phone: '+34612345678'
+              minimal:
+                value:
+                  username: juanito
+                  email: juanito@example.com
+                  password: SecurePassword123!
+      responses:
+        '201':
+          description: Cuenta creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+              examples:
+                success:
+                  value:
+                    id: '550e8400-e29b-41d4-a716-446655440001'
+                    username: pepito
+                    email: pepito@example.com
+                    status: active
+                    createdAt: '2025-11-12T10:30:00Z'
+        '400':
+          description: Datos inválidos o incompletos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validation:
+                  value:
+                    error: validation_error
+                    message: Email ya está registrado
+        '409':
+          description: Usuario o email ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Servicio no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/users/{username}/profile:
+    get:
+      tags:
+        - Gestión de Usuarios
+      summary: Obtener perfil de usuario
+      description: |
+        Obtiene los datos completos del perfil de un usuario.
+        
+        Requiere autenticación. El usuario solo puede ver su propio perfil 
+        a menos que tenga permisos de administrador.
+      operationId: getUserProfile
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Nombre de usuario
+          schema:
+            type: string
+            example: pepito
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Datos del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+              examples:
+                success:
+                  value:
+                    user:
+                      id: '550e8400-e29b-41d4-a716-446655440000'
+                      username: pepito
+                      email: pepito@example.com
+                      firstName: Pepito
+                      lastName: García
+                      phone: '+34612345678'
+                      role: user
+                      status: active
+                      createdAt: '2025-11-01T09:30:00Z'
+                      lastLoginAt: '2025-11-12T10:15:00Z'
+        '401':
+          description: No autenticado - Token faltante o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Servicio no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Gestión de Usuarios
+      summary: Actualizar perfil de usuario
+      description: |
+        Actualiza parcialmente el perfil del usuario.
+        
+        Solo se actualizan los campos que se envían en el body.
+        El usuario solo puede actualizar su propio perfil a menos que sea administrador.
+      operationId: updateUserProfile
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Nombre de usuario
+          schema:
+            type: string
+            example: pepito
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+            examples:
+              partial:
+                value:
+                  firstName: José
+                  phone: '+34698765432'
+              full:
+                value:
+                  firstName: José
+                  lastName: García López
+                  phone: '+34698765432'
+                  email: jose.garcia@example.com
+                  bio: 'Desarrollador de software'
+                  avatar: 'https://example.com/avatars/pepito.jpg'
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Servicio no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Gestión de Usuarios
+      summary: Reemplazar perfil de usuario
+      description: |
+        Reemplaza completamente el perfil del usuario.
+        
+        Similar a PATCH pero todos los campos deben ser proporcionados.
+      operationId: replaceUserProfile
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Nombre de usuario
+          schema:
+            type: string
+            example: pepito
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Perfil reemplazado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/users/{username}:
+    delete:
+      tags:
+        - Gestión de Usuarios
+      summary: Eliminar cuenta de usuario
+      description: |
+        Elimina permanentemente la cuenta de un usuario.
+        
+        **Advertencia**: Esta operación es irreversible.
+        
+        Automaticamente:
+        1. Elimina la cuenta de la base de datos
+        2. Publica evento "user.deleted" al orquestador
+        3. Dispara lógica de limpieza (notificaciones, auditoría, etc.)
+      operationId: deleteUser
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Nombre de usuario a eliminar
+          schema:
+            type: string
+            example: pepito
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cuenta eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteUserResponse'
+              examples:
+                success:
+                  value:
+                    message: 'Cuenta eliminada exitosamente'
+                    username: pepito
+                    deletedAt: '2025-11-12T10:30:00Z'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Servicio no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum:
+            - UP
+            - DOWN
+          example: UP
+          description: Estado del gateway
+        service:
+          type: string
+          example: api-gateway
+          description: Nombre del servicio
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp de la consulta
+        upstreams:
+          type: object
+          properties:
+            auth:
+              type: string
+              example: 'http://auth:3500'
+            orchestrator:
+              type: string
+              example: 'http://orchestrator:8080'
+          description: URLs de los servicios aguas arriba
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+          example: pepito
+          description: Nombre de usuario
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: SecurePassword123!
+          description: Contraseña del usuario
+
+    LoginResponse:
+      type: object
+      required:
+        - token
+        - user
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: JWT token para autenticación
+        user:
+          $ref: '#/components/schemas/User'
+
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+          pattern: '^[a-zA-Z0-9_-]+$'
+          example: pepito
+          description: Nombre de usuario único
+        email:
+          type: string
+          format: email
+          example: pepito@example.com
+          description: Email único del usuario
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: SecurePassword123!
+          description: Contraseña (mín. 8 caracteres, debe incluir mayúsculas, minúsculas y números)
+        firstName:
+          type: string
+          nullable: true
+          example: Pepito
+          description: Nombre del usuario (opcional)
+        lastName:
+          type: string
+          nullable: true
+          example: García
+          description: Apellido del usuario (opcional)
+        phone:
+          type: string
+          nullable: true
+          example: '+34612345678'
+          description: Teléfono del usuario (opcional, formato internacional)
+
+    RegisterResponse:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: '550e8400-e29b-41d4-a716-446655440001'
+          description: ID único del usuario
+        username:
+          type: string
+          example: pepito
+        email:
+          type: string
+          format: email
+          example: pepito@example.com
+        status:
+          type: string
+          enum:
+            - active
+            - inactive
+            - suspended
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          example: '2025-11-12T10:30:00Z'
+
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - role
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: '550e8400-e29b-41d4-a716-446655440000'
+        username:
+          type: string
+          example: pepito
+        email:
+          type: string
+          format: email
+          example: pepito@example.com
+        firstName:
+          type: string
+          nullable: true
+          example: Pepito
+        lastName:
+          type: string
+          nullable: true
+          example: García
+        phone:
+          type: string
+          nullable: true
+          example: '+34612345678'
+        role:
+          type: string
+          enum:
+            - user
+            - admin
+            - moderator
+          example: user
+        status:
+          type: string
+          enum:
+            - active
+            - inactive
+            - suspended
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          example: '2025-11-01T09:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2025-11-12T10:30:00Z'
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2025-11-12T10:15:00Z'
+
+    UserProfile:
+      type: object
+      required:
+        - user
+      properties:
+        user:
+          allOf:
+            - $ref: '#/components/schemas/User'
+            - type: object
+              properties:
+                bio:
+                  type: string
+                  nullable: true
+                  example: 'Desarrollador de software'
+                avatar:
+                  type: string
+                  nullable: true
+                  format: uri
+                  example: 'https://example.com/avatars/pepito.jpg'
+                preferences:
+                  type: object
+                  nullable: true
+                  example:
+                    theme: dark
+                    language: es
+                    notifications: true
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          nullable: true
+          example: José
+        lastName:
+          type: string
+          nullable: true
+          example: García López
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: jose.garcia@example.com
+        phone:
+          type: string
+          nullable: true
+          example: '+34698765432'
+        bio:
+          type: string
+          nullable: true
+          example: 'Desarrollador full-stack'
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          example: 'https://example.com/avatars/jose.jpg'
+        preferences:
+          type: object
+          nullable: true
+          example:
+            theme: dark
+            language: es
+            notifications: true
+
+    DeleteUserResponse:
+      type: object
+      required:
+        - message
+        - username
+        - deletedAt
+      properties:
+        message:
+          type: string
+          example: 'Cuenta eliminada exitosamente'
+        username:
+          type: string
+          example: pepito
+        deletedAt:
+          type: string
+          format: date-time
+          example: '2025-11-12T10:30:00Z'
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          enum:
+            - validation_error
+            - authentication_error
+            - authorization_error
+            - not_found
+            - conflict
+            - server_error
+            - service_unavailable
+          example: validation_error
+          description: Tipo de error
+        message:
+          type: string
+          example: 'El campo email es requerido'
+          description: Descripción del error
+        details:
+          type: object
+          nullable: true
+          example:
+            field: email
+            issue: 'Format inválido'
+          description: Detalles adicionales del error
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtenido del endpoint `/api/v1/auth/login`.
+        
+        Incluir en el header: `Authorization: Bearer <token>`
+
+tags:
+  - name: Health Check
+    description: Monitoreo del estado del gateway
+  - name: Autenticación
+    description: Endpoints para autenticación y registro
+  - name: Gestión de Usuarios
+    description: Endpoints para gestionar perfiles y datos de usuarios
+
+x-logo:
+  url: 'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v3.0/petstore.png'
