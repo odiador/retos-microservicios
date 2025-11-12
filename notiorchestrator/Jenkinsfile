@@ -23,8 +23,6 @@ pipeline {
         SERVICE_NAME = 'orchestrator-service'
         SERVICE_DIR = 'notiorchestrator'
         SONAR_HOST_URL = 'http://sonarqube:9000'
-        DOCKER_IMAGE_NAME = 'orchestrator-service'
-        BUILD_VERSION = "1"
         JAVA_HOME = '/opt/java/openjdk'
     }
     
@@ -184,29 +182,9 @@ sonar.sourceEncoding=UTF-8
             }
         }
         
-        // ============================================
-        // STAGE 7: BUILD DOCKER IMAGE
-        // ============================================
-        stage('🐳 Build Docker Image') {
-            steps {
-                echo "═══════════════════════════════════════════"
-                echo "🐳 Construyendo imagen Docker..."
-                echo "═══════════════════════════════════════════"
-                
-                dir(SERVICE_DIR) {
-                    script {
-                        // Construir imagen Docker
-                        sh """
-                            docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} .
-                            docker tag ${DOCKER_IMAGE_NAME}:${BUILD_VERSION} ${DOCKER_IMAGE_NAME}:latest
-                        """
-                        
-                        echo "✅ Imagen construida: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
-                        echo "✅ Tag: ${DOCKER_IMAGE_NAME}:latest"
-                    }
-                }
-            }
-        }
+        // El paso de construcción de imagen Docker ha sido eliminado porque
+        // Jenkins ya está corriendo dentro de un contenedor Docker y no es
+        // necesario (o deseable) construir imágenes desde dentro del agente.
         
         // ============================================
         // STAGE 8: PRUEBAS DE CUCUMBER
@@ -299,7 +277,6 @@ sonar.sourceEncoding=UTF-8
             echo "═══════════════════════════════════════════"
             echo "Build #${BUILD_NUMBER} completado"
             echo "Servicio: ${SERVICE_NAME}"
-            echo "Imagen Docker: ${DOCKER_IMAGE_NAME}:${BUILD_VERSION}"
         }
         
         failure {
