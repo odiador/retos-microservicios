@@ -14,7 +14,8 @@ export const app = new OpenAPIHono({
   tags: [
     { name: 'Health', description: 'Health check endpoints' },
     { name: 'Authentication', description: 'Authentication and registration endpoints' },
-    { name: 'Users', description: 'User management endpoints' }
+    { name: 'Users', description: 'User management endpoints' },
+    { name: 'Webhooks', description: 'Webhook management endpoints' }
   ],
   components: {
     securitySchemes: {

@@ -1,4 +1,5 @@
 import amqplib from 'amqplib';
+import { triggerWebhooks } from '../utils/webhook.js';
 
 const RABBIT_URL = process.env.RABBITMQ_URL || 'amqp://admin:securepass@rabbitmq:5672';
 const EXCHANGE = process.env.AUTH_EVENTS_EXCHANGE || 'auth.events';
@@ -25,6 +26,12 @@ async function publish(routingKey, payload = {}) {
     const buf = Buffer.from(JSON.stringify(payload));
     const result = await ch.publish(EXCHANGE, routingKey, buf, { persistent: true });
     console.log(`[events] Publicado ${routingKey}:`, JSON.stringify(payload, null, 2));
+    
+    // Also trigger webhooks for this event
+    triggerWebhooks(routingKey, payload).catch(err => {
+      console.error('[events] Error triggering webhooks:', err);
+    });
+    
     return result;
   } catch (err) {
     console.error('[events] Error publicando evento', err.message);
